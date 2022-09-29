@@ -45,6 +45,9 @@ int main(int argc, char *argv[]) {
 	size_t nOriginalFrames, nQuantizatedFrames;
 	vector<short> originalSamples(FRAMES_BUFFER_SIZE * sndOriginalFile.channels());
 	vector<short> quantizatedSamples(FRAMES_BUFFER_SIZE * sndQuantizatedFile.channels());
+	
+	// Maximum per sample absolute error - vector to store the absolute error for each sample
+	vector<short> samplesAbsoluteError;
 
 	int originalAudioEnergy = 0;
 	int noiseEnergy = 0;
@@ -61,6 +64,9 @@ int main(int argc, char *argv[]) {
 
 			originalAudioEnergy = originalAudioEnergy + pow(abs( originalSamples[index] ), 2);
 			noiseEnergy = noiseEnergy + pow(abs( (originalSamples[index] - quantizatedSamples[index]) ), 2);
+
+			// Calculate absolute error and append to vector
+			samplesAbsoluteError.push_back(abs(originalSamples[index] - quantizatedSamples[index]));
         }
 	}
 

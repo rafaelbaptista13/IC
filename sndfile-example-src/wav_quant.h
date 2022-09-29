@@ -7,17 +7,50 @@
 
 class WAVQuant {
   private:
-	std::map<short, short> approximationMap;
+	std::map<short, int> approximationMap;
 
   public:
 	WAVQuant(const int num_bits) {
         int interval = pow(2, (16-num_bits));
 
-        short currentThreshold = -32678;
-        for (short i = -32678; i<= 32677; i++) {
-            if (i % interval == 0) 
-                currentThreshold = i;
+        /*  Version of keeping the 0  (-8 -4 0 4) 
+        int counter = 0;  
+        int currentThreshold = -32768;
+        for (int i = -32768; i<= 32767; i++) {
+            if (i % interval == 0) { 
+                currentThreshold = i;    
+                counter = 0;
+            }
+            // If the current value is between two multiples of interval value, change the currentThreshold to the next multiple
+            if (counter == (interval/2) + 1) {
+                // If to make sure that the new threshold is inside the range of amplitudes
+                // (If the new threshold is greater than the max amplitude, the threshold needs to remain the same)
+                if (currentThreshold + interval < 32767) 
+                    currentThreshold = currentThreshold + interval;
+            }
             approximationMap[i] = currentThreshold;
+            counter++;
+            
+            std::cout << i << "\t" << currentThreshold << '\n';
+        }
+        */
+
+        /* Version of not keeping the 0   (-6 -2 2 6) */
+        int counter = 0;  
+        int currentThreshold = -32768 + interval / 2;
+        for (int i = -32768; i<= 32767; i++) {
+            // If the current value is in the middle of two multiples(of the interval value)
+            if (abs(i % interval) == (interval / 2)) { 
+                currentThreshold = i;    
+                counter = 0;
+            }
+            if (counter == (interval/2)) {
+                currentThreshold = currentThreshold + interval;
+            }
+            approximationMap[i] = currentThreshold;
+            counter++;
+            
+            std::cout << i << "\t" << currentThreshold << '\n';
         }
 
 	}
