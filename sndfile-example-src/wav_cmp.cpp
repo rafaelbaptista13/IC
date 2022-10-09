@@ -46,11 +46,9 @@ int main(int argc, char *argv[]) {
 	vector<short> originalSamples(FRAMES_BUFFER_SIZE * sndOriginalFile.channels());
 	vector<short> quantizatedSamples(FRAMES_BUFFER_SIZE * sndQuantizatedFile.channels());
 	
-	// Maximum per sample absolute error - vector to store the absolute error for each sample
-	vector<short> samplesAbsoluteError;
-
-	int originalAudioEnergy = 0;
-	int noiseEnergy = 0;
+	long int originalAudioEnergy = 0;
+	long int noiseEnergy = 0;
+	int maxAbsError = -1;
 	while((nOriginalFrames = sndOriginalFile.readf(originalSamples.data(), FRAMES_BUFFER_SIZE))) {
 
 		nQuantizatedFrames = sndQuantizatedFile.readf(quantizatedSamples.data(), FRAMES_BUFFER_SIZE);
@@ -61,17 +59,21 @@ int main(int argc, char *argv[]) {
 
 		for (auto it = originalSamples.begin(); it != originalSamples.end(); ++it) {
             int index = distance(originalSamples.begin(), it);
-
+			
 			originalAudioEnergy = originalAudioEnergy + pow(abs( originalSamples[index] ), 2);
 			noiseEnergy = noiseEnergy + pow(abs( (originalSamples[index] - quantizatedSamples[index]) ), 2);
 
 			// Calculate absolute error and append to vector
-			samplesAbsoluteError.push_back(abs(originalSamples[index] - quantizatedSamples[index]));
+			int error = abs(originalSamples[index] - quantizatedSamples[index]);
+			if (maxAbsError < error) {
+				maxAbsError = error;
+			}
         }
 	}
 
-	int snr = 10*log10( originalAudioEnergy/noiseEnergy );
-	cout << snr << endl;
-
+	double snr = 10*log10( (double) originalAudioEnergy/noiseEnergy );
+	cout << "SNR = " << snr << " dB" << endl;
+	cout << "Max Abs Error = " << maxAbsError << endl;
+	
 	return 0;
 }

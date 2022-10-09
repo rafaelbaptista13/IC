@@ -9,8 +9,8 @@
 class WAVHist {
   private:
 	std::vector<std::map<short, size_t>> counts;
-	std::map<short, size_t> midChannelCounts;
-	std::map<short, size_t> sideChannelCounts;
+	std::map<int, size_t> midChannelCounts;
+	std::map<int, size_t> sideChannelCounts;
 	bool midChannelRequest;
 	bool sideChannelRequest;
 
@@ -26,14 +26,14 @@ class WAVHist {
 			/*
 			 MID Channel Histogram Calculation
 			*/
-			short lastSample;
+			int lastSample = 0;
 			size_t n { };
 			
 			for(auto s : samples) {
 				if (n++ % 2 == 0) {
 					lastSample = s;
 				} else {
-					short meanValue = (lastSample + s) / 2;
+					int meanValue = (lastSample + s) / 2;
 					midChannelCounts[meanValue]++;
 				}
 			}
@@ -42,13 +42,13 @@ class WAVHist {
 			/*
 			 SIDE Channel Histogram Calculation
 			*/
-			short lastSample;
+			int lastSample = 0;
 			size_t n { };
 			for(auto s : samples) {
 				if (n++ % 2 == 0) {
 					lastSample = s;
 				} else {
-					short diffValue = (lastSample - s) / 2;
+					int diffValue = (lastSample - s) / 2;
 					sideChannelCounts[diffValue]++;
 				}
 			}
