@@ -11,12 +11,12 @@ constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
 int main(int argc, char *argv[]) {
 
 
-    if (argc < 4) {
-        cerr << "Usage: " << argv[0] << " <input file> <output file> <delay>\n";
+    if (argc < 5) {
+        cerr << "Usage: " << argv[0] << " <input file> <output file> <delay> <amplitdude_eco>\n";
         return 1;
     }
 
-    SndfileHandle sfhIn{argv[argc - 3]};
+    SndfileHandle sfhIn{argv[argc - 4]};
     if (sfhIn.error()) {
         cerr << "Error: invalid input file\n";
         return 1;
@@ -32,20 +32,24 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    SndfileHandle sfhOut{argv[argc - 2], SFM_WRITE, sfhIn.format(),
+    SndfileHandle sfhOut{argv[argc - 3], SFM_WRITE, sfhIn.format(),
                          sfhIn.channels(), sfhIn.samplerate()};
     if (sfhOut.error()) {
         cerr << "Error: invalid output file\n";
         return 1;
     }
 
-    double delay = stod(argv[argc - 1]);
 
-    int sampleNumber = delay * sfhIn.samplerate();
+    //TODO: checks if it has errors
+    double delay = stod(argv[argc - 2]);
+    double ampEco = stod(argv[argc - 1]);
+
+    int k = delay * sfhIn.samplerate();
 
     size_t nFrames;
 
     int queue_size = 0;
+
     queue<int> delayBuffer;
     vector<short> inSamples(FRAMES_BUFFER_SIZE * sfhIn.channels());
     vector<short> outSamples(FRAMES_BUFFER_SIZE * sfhIn.channels());
@@ -53,13 +57,13 @@ int main(int argc, char *argv[]) {
     while((nFrames = sfhIn.readf(inSamples.data(), FRAMES_BUFFER_SIZE))){
         for (auto it = inSamples.begin(); it != inSamples.end(); ++it) {
             int index = distance(inSamples.begin(), it);
-            if (queue_size < sampleNumber * sfhIn.channels() - 1){
+            if (queue_size < k * sfhIn.channels() - 1){
                 delayBuffer.push(inSamples[index]);
                 outSamples[index] = inSamples[index];
                 queue_size++;
             }
             else{
-                outSamples[index] = inSamples[index] + 0.1 * (double) delayBuffer.front();
+                outSamples[index] = (inSamples[index] + ampEco * (double) delayBuffer.front()) / (1 + ampEco);
                 //cout << index << '\t' << inSamples[index]  << '\t'<< delayBuffer.front() << '\t' << outSamples[index] << '\n';
                 delayBuffer.pop();
                 delayBuffer.push(inSamples[index]);
