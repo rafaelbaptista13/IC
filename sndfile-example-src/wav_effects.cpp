@@ -2,48 +2,11 @@
 #include <vector>
 #include <sndfile.hh>
 #include <math.h>
-#include <deque>
+#include "wav_effects.h"
 
 using namespace std;
 
 constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
-
-enum EffectType{
-    SINGLE,
-    MULTIPLE,
-    AMPLITUDE_MOD,
-    TIME_VARYING
-};
-
-void eco_effect(vector<short>& inSamples, vector<short>& outSamples, deque<int>& delayBuffer,
-                const int kChannel, const double ampEco, const int index, const EffectType effectType){
-
-    if (delayBuffer.size() < kChannel - 1){
-        delayBuffer.push_back(inSamples[index]);
-        outSamples[index] = inSamples[index];
-    }
-    else{
-        switch (effectType) {
-            case SINGLE:
-            case MULTIPLE:
-                outSamples[index] = (inSamples[index] + ampEco * (double) delayBuffer.front()) / (1 + ampEco);
-                break;
-            case TIME_VARYING:
-                outSamples[index] = (inSamples[index] + ampEco * (double) delayBuffer[cos(kChannel)]) / (1 + ampEco);
-                break;
-            default:
-                return;
-        }
-        //cout << index << '\t' << inSamples[index]  << '\t'<< delayBuffer.front() << '\t' << outSamples[index] << '\n';
-        delayBuffer.pop_front();
-
-        //cout << effectType << '\t' << MULTIPLE <<'\n';
-        if (effectType != MULTIPLE)
-            delayBuffer.push_back(inSamples[index]);
-        else
-            delayBuffer.push_back(outSamples[index]);
-    }
-}
 
 int main(int argc, char *argv[]) {
 
@@ -99,21 +62,14 @@ int main(int argc, char *argv[]) {
 
     size_t nFrames;
 
-    deque<int> delayBuffer;
     vector<short> inSamples(FRAMES_BUFFER_SIZE * sfhIn.channels());
     vector<short> outSamples(FRAMES_BUFFER_SIZE * sfhIn.channels());
+
+    WAVEffects wavEffects = WAVEffects(sfhIn, effectType, k, ampEco, FRAMES_BUFFER_SIZE * sfhIn.channels());
+
     while((nFrames = sfhIn.readf(inSamples.data(), FRAMES_BUFFER_SIZE))){
-        for (auto it = inSamples.begin(); it != inSamples.end(); ++it) {
-            int index = distance(inSamples.begin(), it);
-            if (effectType != AMPLITUDE_MOD){
-                eco_effect( inSamples, outSamples, delayBuffer,
-                           k*sfhIn.channels(), ampEco, index, effectType);
-            }
-            else {
-                outSamples[index] = inSamples[index] * cos(1/sfhIn.samplerate() * nFrames);
-            }
-        }
-        sfhOut.writef(outSamples.data(), nFrames);
+        wavEffects.applyEffect(inSamples);
+        sfhOut.writef(wavEffects.outSamples.data(), nFrames);
     }
 }
 
