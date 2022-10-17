@@ -35,8 +35,6 @@ class BitStream {
           return EOF;
         }
 
-      
-
     }
 
     val = ((byte >> (7-bitReadCounter)) & 0x01);
@@ -48,15 +46,16 @@ class BitStream {
 
   void write_bit(int val) {
 
+    // Append the bit to the current byte
     byte = byte + (val << (7 - bitReadCounter));
     
     bitReadCounter++;
+    
     if (bitReadCounter % 8 == 0) {
-      
+      // Full byte - ready to write in file
       bitReadCounter = 0;
       myOutputStream << byte;
       byte = 0;
-
     }
 
     return ;
@@ -68,8 +67,7 @@ class BitStream {
       myInputStream.close();
     else
       if (bitReadCounter != 0) {
-
-        // FALTA VER SE FALTA ALGUMA COISA
+        // Write the remaining bits
         myOutputStream << byte;
         myOutputStream.close();
       }

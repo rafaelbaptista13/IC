@@ -39,12 +39,20 @@ int main(int argc, char *argv[]) {
         ofs.close();
     } else {
         ifstream ifs { argv[argc-2] };
-        int val;
-
-        while (ifs >> val) {
+        char val;
+        
+        while (ifs.get(val)) {
             cout << val << endl;
+            for (int i = 7; i >= 0; i--) 
+                bitStream.write_bit(((val >> i) & 1));
+        }
+
+        /* Not working but it's the professor version 
+        int val;
+        while (ifs >> val) {
             bitStream.write_bit(val);
         }
+        */
 
         ifs.close();
     }
