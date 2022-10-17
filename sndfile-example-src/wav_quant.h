@@ -31,9 +31,9 @@ class WAVQuant {
             approximationMap[i] = currentThreshold;
             counter++;
             
-            std::cout << i << "\t" << currentThreshold << '\n';
-        }
-        */
+            //std::cout << i << "\t" << currentThreshold << '\n';
+        }*/
+        
 
         /* Version of not keeping the 0   (-6 -2 2 6) */
         int counter = 0;  
@@ -51,7 +51,7 @@ class WAVQuant {
             counter++;
             
         }
-
+        
 	}
 
 	std::vector<short>& quantization(std::vector<short>& samples) {

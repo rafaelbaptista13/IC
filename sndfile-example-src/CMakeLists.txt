@@ -28,3 +28,6 @@ target_link_libraries (wav_cmp sndfile)
 
 add_executable (wav_effects wav_effects.cpp)
 target_link_libraries (wav_effects sndfile)
+
+add_executable (BitStream BitStream.cpp)
+target_link_libraries (BitStream)
