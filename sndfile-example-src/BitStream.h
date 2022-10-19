@@ -44,6 +44,26 @@ class BitStream {
     return val;
 	}
 
+
+  std::string get_n_bits(int val) {
+        
+    std::string bits = "";
+
+    for (int i = 0; i < val; i++) {
+        int bit = get_bit();
+        if (bit == 0) {
+            bits += "0";
+        } else if (bit == 1) {
+            bits += "1";
+        } else {
+            return bits;
+        }
+    }
+
+    return bits;
+	}
+
+
   void write_bit(int val) {
 
     // Append the bit to the current byte
@@ -56,6 +76,16 @@ class BitStream {
       bitReadCounter = 0;
       myOutputStream << byte;
       byte = 0;
+    }
+
+    return ;
+  }
+
+
+  void write_n_bits(std::string bits) {
+
+    for (char const &bit: bits) {
+        write_bit(bit - '0');
     }
 
     return ;

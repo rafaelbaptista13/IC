@@ -35,6 +35,15 @@ int main(int argc, char *argv[]) {
 
         while ( (bit = bitStream.get_bit()) != EOF )
             ofs << bit;
+        
+        /* Version to use get_n_bits 
+        string bits;
+        while ( (bits = bitStream.get_n_bits(3) ) != "" ) {
+            for (char const &bit: bits) {
+                ofs << bit - '0';
+            }
+        }
+        */
 
         ofs.close();
     } else {
@@ -42,10 +51,20 @@ int main(int argc, char *argv[]) {
         char val;
         
         while (ifs.get(val)) {
-            cout << val << endl;
             for (int i = 7; i >= 0; i--) 
                 bitStream.write_bit(((val >> i) & 1));
         }
+        
+        /* Version to use write_n_bits
+        while (ifs.get(val)) {
+            string bits = "";
+            for (int i = 7; i >= 0; i--) {
+                int bit = ((val >> i) & 1);
+                bits += to_string(bit);
+            }
+            bitStream.write_n_bits(bits);
+        }
+        */
 
         /* Not working but it's the professor version 
         int val;
