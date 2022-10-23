@@ -29,7 +29,7 @@ private:
 
     void eco_effect(short sample, int index){
         int kChannel = k * channels;
-        if (delayBuffer.size() < kChannel - 1){
+        if ((int) delayBuffer.size() < kChannel - 1){
             delayBuffer.push_back(sample);
             outSamples[index] = sample;
         }
@@ -41,7 +41,8 @@ private:
                     //std::cout << index << '\t' << ampEco << '\t' << sample  << '\t'<< delayBuffer.front() << '\t' << outSamples[index] << '\n';
                     break;
                 case TIME_VARYING:
-                    outSamples[index] = (sample + ampEco * (double) delayBuffer[cos(frameCount*100/sampleRate)]) / (1 + ampEco);
+                    outSamples[index] = (sample + ampEco *
+                            (double) delayBuffer[abs(cos(frameCount*2.0*M_PI/sampleRate)*200)]) / (1 + ampEco);
                     break;
                 default:
                     return;
@@ -76,9 +77,8 @@ public:
                 eco_effect( samples[index], index);
             }
             else {
-                double result = (3000.0 / sampleRate) * frameCount * 2.0 * M_PI;
-                //FIXME: change this 1000 to variable asked in the UI and see formula
-                outSamples[index] = samples[index] * cos((1000.0 / sampleRate) * frameCount * 2.0 * M_PI);
+                //FIXME: change this 2000 to variable asked in the UI and see formula
+                outSamples[index] = samples[index] * abs(cos((2000.0 / sampleRate) * frameCount * 2.0 * M_PI));
                 //std::cout << frameCount << "\t" << M_PI << "\t" << result << "\t"  << cos(result) << "\n";
             }
             if (index % 2 == 1)
