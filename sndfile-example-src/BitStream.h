@@ -12,7 +12,7 @@ class BitStream {
     int bitReadCounter = 0;
     char byte = 0;
     std::string mode;
-
+    int contador = 1;
 
   public:
 	BitStream(std::string nomeFicheiro, std::string mode) {
@@ -30,11 +30,12 @@ class BitStream {
     if (bitReadCounter % 8 == 0) {
 
         bitReadCounter = 0;
+        byte = 0;
 
-        if (!(myInputStream >> byte)) {
+        if (!myInputStream.get(byte)) {
           return EOF;
         }
-
+        
     }
 
     val = ((byte >> (7-bitReadCounter)) & 0x01);
@@ -59,6 +60,7 @@ class BitStream {
             return bits;
         }
     }
+    contador++;
 
     return bits;
 	}
@@ -76,6 +78,7 @@ class BitStream {
       bitReadCounter = 0;
       myOutputStream << byte;
       byte = 0;
+      
     }
 
     return ;
@@ -83,11 +86,16 @@ class BitStream {
 
 
   void write_n_bits(std::string bits) {
-
+    
     for (char const &bit: bits) {
         write_bit(bit - '0');
+        //if (bits == "00000000000000000000000000001101") {
+        //  std::cout << (int) byte << " " << bitReadCounter << " " << bit << std::endl;
+          
+        //}
     }
-
+    myOutputStream.flush();
+    //std::cout << "Já escrevi " << contador << std::endl;
     return ;
   }
 
