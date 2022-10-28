@@ -74,6 +74,8 @@ int main(int argc, char *argv[]) {
 	bitStream.write_n_bits(std::bitset<32>(sfhIn.frames()).to_string());
 	// Write wavFileInput sampleRate to coded file
 	bitStream.write_n_bits(std::bitset<32>(sfhIn.samplerate()).to_string());
+	// Write dctFrac to coded file
+	bitStream.write_n_bits(std::bitset<32>(dctFrac*1000).to_string());
 
 	size_t nChannels { static_cast<size_t>(sfhIn.channels()) };
 	size_t nFrames { static_cast<size_t>(sfhIn.frames()) };
@@ -103,14 +105,10 @@ int main(int argc, char *argv[]) {
 
 			fftw_execute(plan_d);
 			// Keep only "dctFrac" of the "low frequency" coefficients
-			for(size_t k = 0 ; k < bs ; k++) {
-				if (k < bs * dctFrac) {
-					x_dct[c][n * bs + k] = x[k] / (bs << 1);
-					int num = (int) x_dct[c][n * bs + k];
-					bitStream.write_n_bits(std::bitset<32>(num).to_string());
-				} else {
-					bitStream.write_n_bits(std::bitset<32>(0).to_string());
-				}
+			for(size_t k = 0 ; k < bs * dctFrac; k++) {
+				x_dct[c][n * bs + k] = x[k] / (bs << 1);
+				int num = (int) x_dct[c][n * bs + k];
+				bitStream.write_n_bits(std::bitset<32>(num).to_string());
 			}
 		}
 

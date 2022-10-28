@@ -40,6 +40,10 @@ int main(int argc, char *argv[]) {
 	// Get wavFileInput sampleRate
 	std::string str_sample_rate = bitStreamRead.get_n_bits(32);
 	int sample_rate = (int32_t) std::bitset<32>(str_sample_rate).to_ulong();
+	// Get dctFrac
+	std::string str_dctFrac = bitStreamRead.get_n_bits(32);
+	double dctFrac = (int32_t) std::bitset<32>(str_dctFrac).to_ulong();
+	dctFrac = dctFrac/1000;
 
 	SndfileHandle sfhOut { argv[argc-1], SFM_WRITE, format,
 	  channels, sample_rate };
@@ -68,8 +72,12 @@ int main(int argc, char *argv[]) {
 	for(size_t n = 0 ; n < nBlocks ; n++)
 		for(size_t c = 0 ; c < nChannels ; c++) {
 			for(size_t k = 0 ; k < bs ; k++) {
-				std::string value = bitStreamRead.get_n_bits(32);
-				x[k] = (int32_t) std::bitset<32>(value).to_ulong();
+				if (k < bs * dctFrac) {
+					std::string value = bitStreamRead.get_n_bits(32);
+					x[k] = (int32_t) std::bitset<32>(value).to_ulong();
+				} else {
+					x[k] = 0;
+				}
 			}
 			fftw_execute(plan_i);
 			for(size_t k = 0 ; k < bs ; k++)
