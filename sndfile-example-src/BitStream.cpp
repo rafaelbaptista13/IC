@@ -9,9 +9,9 @@ int main(int argc, char *argv[]) {
     string mode { "r" };
 
     if (argc < 2 ) {
-        cerr << "test_bs [ -r (def) ]\n";
-        cerr << "        [ -w ]\n";
-        cerr << "        text_file bin_file\n";
+        cerr << "BitStream [ -r (def) ]\n";
+        cerr << "          [ -w ]\n";
+        cerr << "          <text_file> <bin_file>\n";
         return 1;
     }
 
