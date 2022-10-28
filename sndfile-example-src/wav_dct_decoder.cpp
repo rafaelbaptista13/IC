@@ -60,10 +60,7 @@ int main(int argc, char *argv[]) {
 	// Do zero padding, if necessary
 	samples.resize(nBlocks * bs * nChannels);
 
-	// Vector for holding all DCT coefficients, channel by channel
-	vector<vector<double>> x_dct(nChannels, vector<double>(nBlocks * bs));
-
-	// Vector for holding DCT computations
+	// Vector for holding DCT coefficients
 	vector<double> x(bs);
 
 	// Inverse DCT
