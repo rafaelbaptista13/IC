@@ -78,7 +78,7 @@ public:
             }
             else {
                 //FIXME: change this 2000 to variable asked in the UI and see formula
-                outSamples[index] = samples[index] * abs(cos((2000.0 / sampleRate) * frameCount * 2.0 * M_PI));
+                outSamples[index] = samples[index] * cos((1.5 / sampleRate) * frameCount * 2.0 * M_PI);
                 //std::cout << frameCount << "\t" << M_PI << "\t" << result << "\t"  << cos(result) << "\n";
             }
             if (index % 2 == 1)
