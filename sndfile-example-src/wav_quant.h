@@ -31,7 +31,6 @@ class WAVQuant {
                 }
                 approximationMap[i] = currentThreshold;
                 counter++;
-                
                 //std::cout << i << "\t" << currentThreshold << '\n';
             }
         }
@@ -51,7 +50,7 @@ class WAVQuant {
                 }
                 approximationMap[i] = currentThreshold;
                 counter++;
-                
+                //std::cout << i << "\t" << currentThreshold << '\n';
             }
         }
         
