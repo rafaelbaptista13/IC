@@ -32,11 +32,14 @@ Reduce the number of bits used to represent each audio sample (uniform scalar qu
 
 Usage:
 ```
-./wav_quant <input file> <output file> <num_bits>
+./wav_quant <input file> <output file> <num_bits> <version>
 ```
 Examples:
 ```
-./wav_quant ../examples/sample.wav output.wav 4
+./wav_quant ../examples/sample.wav output.wav 4 1
+./wav_quant ../examples/sample.wav output.wav 4 2
+./wav_quant ../examples/sample.wav output.wav 8 1
+./wav_quant ../examples/sample.wav output.wav 8 2
 ```
 
 ## Exercise 4 - wav_cmp
