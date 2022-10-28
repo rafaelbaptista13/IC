@@ -59,14 +59,14 @@ Produces audio effects
 
 Usage:
 ```
-./wav_effects <input file> <output file> <delay> <amplitude_eco> <mode>
+./wav_effects <input file> <output file> <mode> <delay> <amplitude_eco>
 ```
 Examples:
 ```
-./wav_effects ../examples/sample.wav output.wav 2 0.5 SINGLE
-./wav_effects ../examples/sample.wav output.wav 2 0.5 MULTIPLE
-./wav_effects ../examples/sample.wav output.wav 2 0.5 AMPLITUDE_MOD
-./wav_effects ../examples/sample.wav output.wav 2 0.5 TIME_VARYING
+./wav_effects ../examples/sample.wav output.wav SINGLE 2 0.5
+./wav_effects ../examples/sample.wav output.wav MULTIPLE 2 0.5
+./wav_effects ../examples/sample.wav output.wav AMPLITUDE_MOD 2 0.5
+./wav_effects ../examples/sample.wav output.wav TIME_VARYING 2 0.5
 ```
 
 ## Exercise 7 - BitStream

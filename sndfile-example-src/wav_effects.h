@@ -18,7 +18,6 @@ enum EffectType{
 
 class WAVEffects {
 private:
-    //SndfileHandle& sfh;
     EffectType effectType;
     int frameCount;
     int k;
@@ -38,7 +37,6 @@ private:
                 case SINGLE:
                 case MULTIPLE:
                     outSamples[index] = (sample + ampEco * (double) delayBuffer.front()) / (1 + ampEco);
-                    //std::cout << index << '\t' << ampEco << '\t' << sample  << '\t'<< delayBuffer.front() << '\t' << outSamples[index] << '\n';
                     break;
                 case TIME_VARYING:
                     outSamples[index] = (sample + ampEco *
@@ -47,10 +45,7 @@ private:
                 default:
                     return;
             }
-            //cout << index << '\t' << inSamples[index]  << '\t'<< delayBuffer.front() << '\t' << outSamples[index] << '\n';
             delayBuffer.pop_front();
-
-            //cout << effectType << '\t' << MULTIPLE <<'\n';
             if (effectType != MULTIPLE)
                 delayBuffer.push_back(sample);
             else
@@ -77,9 +72,7 @@ public:
                 eco_effect( samples[index], index);
             }
             else {
-                //FIXME: change this 2000 to variable asked in the UI and see formula
                 outSamples[index] = samples[index] * cos((1.5 / sampleRate) * frameCount * 2.0 * M_PI);
-                //std::cout << frameCount << "\t" << M_PI << "\t" << result << "\t"  << cos(result) << "\n";
             }
             if (index % 2 == 1)
                 frameCount++;

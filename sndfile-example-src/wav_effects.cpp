@@ -1,7 +1,6 @@
 #include <iostream>
 #include <vector>
 #include <sndfile.hh>
-#include <math.h>
 #include "wav_effects.h"
 
 using namespace std;
@@ -11,7 +10,7 @@ constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
 int main(int argc, char *argv[]) {
 
     if (argc < 6) {
-        cerr << "Usage: " << argv[0] << " <input file> <output file> <delay> <amplitude_eco> <mode>\n";
+        cerr << "Usage: " << argv[0] << " <input file> <output file> <mode> <delay> <amplitude_eco>\n";
         return 1;
     }
 
@@ -39,7 +38,7 @@ int main(int argc, char *argv[]) {
     }
 
     EffectType effectType;
-    string strEffect = argv[argc - 1];
+    string strEffect = argv[argc - 3];
 
     if (strEffect.compare("SINGLE") == 0)
         effectType = SINGLE;
@@ -50,14 +49,36 @@ int main(int argc, char *argv[]) {
     else if (strEffect.compare("TIME_VARYING") == 0)
         effectType = TIME_VARYING;
     else {
-        cerr << "Error: invalid output file\n";
+        cerr << "Error: invalid  mode\n"
+                "Available modes are:\n"
+                "    SINGLE\n"
+                "    MULTIPLE\n"
+                "    AMPLITUDE_MOD\n"
+                "    TIME_VARYING\n";
         return 1;
     }
 
-    //TODO: checks if it has errors
-    double delay = stod(argv[argc - 3]);
-    double ampEco = stod(argv[argc - 2]);
+    // Assigns the delay argument
+    double delay;
+    try {
+        delay = stod(argv[argc - 2]);
+    }
+    catch (...){
+        cerr << "Error: invalid value on the delay of the echo\n";
+        return 1;
+    }
 
+    // Assigns the ampEco argument
+    double ampEco;
+    try {
+        ampEco = stod(argv[argc - 1]);
+    }
+    catch (...){
+        cerr << "Error: invalid value on the amplitude of the echo\n";
+        return 1;
+    }
+
+    // Calculates the number of samples in the delay time
     int k = delay * sfhIn.samplerate();
 
     size_t nFrames;
