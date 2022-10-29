@@ -73,8 +73,8 @@ int main(int argc, char *argv[]) {
 		for(size_t c = 0 ; c < nChannels ; c++) {
 			for(size_t k = 0 ; k < bs ; k++) {
 				if (k < bs * dctFrac) {
-					std::string value = bitStreamRead.get_n_bits(32);
-					x[k] = (int32_t) std::bitset<32>(value).to_ulong();
+					std::string value = bitStreamRead.get_n_bits(16);
+					x[k] = (int16_t) std::bitset<16>(value).to_ulong();
 				} else {
 					x[k] = 0;
 				}

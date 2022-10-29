@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
 			for(size_t k = 0 ; k < bs * dctFrac; k++) {
 				x_dct[c][n * bs + k] = x[k] / (bs << 1);
 				int num = (int) x_dct[c][n * bs + k];
-				bitStream.write_n_bits(std::bitset<32>(num).to_string());
+				bitStream.write_n_bits(std::bitset<16>(num).to_string());
 			}
 		}
 
