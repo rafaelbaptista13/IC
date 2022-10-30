@@ -80,8 +80,8 @@ Usage:
 ```
 Examples:
 ```
-./BitStream -r output_binary_data ../examples/data 
-./BitStream -w ../examples/data output_binary_data
+./BitStream -r ../examples/output_binary_data ../examples/data 
+./BitStream -w ../examples/data ../examples/output_binary_data
 ```
 
 ## Exercise 8 - wav_dct_codec and wav_dct_decoder
