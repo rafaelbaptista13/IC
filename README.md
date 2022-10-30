@@ -97,7 +97,7 @@ wav_dct_codec [ -v (verbose) ]
 ```
 Examples:
 ```
-./wav_dct_codec output_bits_file ../examples/sample.wav
+./wav_dct_codec ../examples/bits_file ../examples/sample.wav
 ```
 
 ### wav_dct_decoder
@@ -108,5 +108,5 @@ Usage:
 ```
 Examples:
 ```
-./wav_dct_codec output_bits_file ../examples/sample.wav
+./wav_dct_decoder ../examples/bits_file output.wav
 ```
