@@ -1,3 +1,0 @@
-/home/rafael/Desktop/IC/IC/Assignment2/opencv-src/CMakeFiles/rebuild_cache.dir
-/home/rafael/Desktop/IC/IC/Assignment2/opencv-src/CMakeFiles/edit_cache.dir
-/home/rafael/Desktop/IC/IC/Assignment2/opencv-src/CMakeFiles/cp_image.dir
