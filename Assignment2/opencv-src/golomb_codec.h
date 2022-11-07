@@ -34,16 +34,17 @@ class GOLOMBCodec {
         }
 
         if (num_codes_with_max_num_symbols_per_code > 0) {
-            int first_symbol_with_max_symbols_per_code = num_codes_with_min_num_symbols_per_code ;
-            std::string code_first_symbol_with_max = std::bitset<32>( first_symbol_with_max_symbols_per_code ).to_string();
-            code_first_symbol_with_max = code_first_symbol_with_max.substr(code_first_symbol_with_max.length() - min_num_symbols_per_code, code_first_symbol_with_max.length());
-            code_first_symbol_with_max+="0";
-            truncated_binary_codes.push_back(code_first_symbol_with_max);
+            // Add a 0 to the end of the binary code
+            int last_num = num_codes_with_min_num_symbols_per_code << 1;    
 
-            int last_num = std::stoi(code_first_symbol_with_max, nullptr, 2);
+            // Convert to binary string
+            std::string code_first_symbol_with_max = std::bitset<32>( last_num ).to_string();
+            code_first_symbol_with_max = code_first_symbol_with_max.substr(code_first_symbol_with_max.length() - max_num_symbols_per_code, code_first_symbol_with_max.length());
+            
+            truncated_binary_codes.push_back(code_first_symbol_with_max);
             std::cout << last_num << std::endl;
 
-            for (int i = first_symbol_with_max_symbols_per_code+1; i<m; i++) {
+            for (int i = num_codes_with_min_num_symbols_per_code+1; i<m; i++) {
                 int current_num = last_num + 1;
                 symbolcode = std::bitset<32>(current_num).to_string();
                 symbolcode = symbolcode.substr(symbolcode.length() - max_num_symbols_per_code, symbolcode.length());
@@ -53,6 +54,7 @@ class GOLOMBCodec {
             }
         
         }
+
 
         /*
             ESTE CICLO FOR É SO PARA PRINT. PODE SER TIRADO DEPOIS
