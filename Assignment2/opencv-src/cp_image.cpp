@@ -48,7 +48,7 @@ void rotate_pixels(Mat& originalImg, Mat& copyImg, int degree) {
         case 1:     // 90 Degrees
             for(int i=0; i<originalImg.rows; i++) {
                 for (int j=0; j<originalImg.cols; j++) {
-                    copyImg.at<Vec3b>(j, originalImg.rows - i - 1) = originalImg.at<Vec3b>(i, j);
+                    copyImg.at<Vec3b>(originalImg.rows - i - 1, j) = originalImg.at<Vec3b>(j, i);
                 }
             }
             break;
@@ -62,24 +62,36 @@ void rotate_pixels(Mat& originalImg, Mat& copyImg, int degree) {
         case 3:     // 270 Degrees
             for(int i=0; i<originalImg.rows; i++) {
                 for (int j=0; j<originalImg.cols; j++) {
-                    copyImg.at<Vec3b>(originalImg.rows - i - 1, j) = originalImg.at<Vec3b>(j, i);
+                    copyImg.at<Vec3b>(j, originalImg.rows - i - 1) = originalImg.at<Vec3b>(i, j);
                 }
             }
             break;
         default:
             break;
-    }
-
-    
+    }   
 }
+
+
+void change_intensity_pixels(Mat& originalImg, Mat& copyImg, float intensity_factor) {
+    for(int i=0; i<originalImg.rows; i++) {
+        for (int j=0; j<originalImg.cols; j++) {
+            uchar r =  (originalImg.at<Vec3b>(i, j)[0] * intensity_factor > 255) ? 255 : originalImg.at<Vec3b>(i, j)[0] * intensity_factor;
+            uchar g =  (originalImg.at<Vec3b>(i, j)[1] * intensity_factor > 255) ? 255 : originalImg.at<Vec3b>(i, j)[1] * intensity_factor;
+            uchar b =  (originalImg.at<Vec3b>(i, j)[2] * intensity_factor > 255) ? 255 : originalImg.at<Vec3b>(i, j)[2] * intensity_factor;
+            copyImg.at<Vec3b>(i, j) = Vec3b(r, g, b);
+        }
+    }
+}
+
 
 
 int main(int argc,const char** argv) {
 
     int degree { 90 };
+    float intensity_factor { 2 };
 
     if (argc < 4 ) {
-        cerr << "./cp_image [-r degree (def 90)] <mode> <original_img> <output_img>\n";
+        cerr << "./cp_image [-r degree (def 90)] [-i intensity_factor (def 2)] <mode> <original_img> <output_img>\n";
         return 1;
     }
 
@@ -105,6 +117,10 @@ int main(int argc,const char** argv) {
             return 1;
         }
 
+        if (degree < 0) {
+            degree = 360 + (degree % 360);
+        }
+
         // Resize matrix according to the degree
         if (degree / 90 % 2 == 0) {
             // normal matrix size
@@ -123,6 +139,23 @@ int main(int argc,const char** argv) {
     } else if (mode == "MIRROR_HORIZONTAL") {
         copyImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
         mirror_horizontal_pixels(originalImg, copyImg);
+    } else if (mode == "INTENSITY") {
+
+        for(int n = 1 ; n < argc ; n++)
+            if(string(argv[n]) == "-i") {
+                intensity_factor = atof(argv[n+1]);
+                break;
+            }
+
+        // Check degree multiple of 90
+        if (intensity_factor <= 0 ) {
+            cerr << "Intensity factor should be greater than 0.\n";
+            return 1;
+        }
+
+
+        copyImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+        change_intensity_pixels(originalImg, copyImg, intensity_factor);
     } else if (mode == "COPY") {
         copyImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
         copy_pixels(originalImg, copyImg);
