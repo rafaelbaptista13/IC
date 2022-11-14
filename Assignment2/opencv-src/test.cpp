@@ -1,5 +1,6 @@
 #include <iostream>
 #include "golomb_codec.h"
+#include "BitStream.h"
 
 using namespace std;
 
