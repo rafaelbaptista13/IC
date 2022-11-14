@@ -72,10 +72,14 @@ class GOLOMBCodec {
 		
         std::string code;
         int q, r;
-        q = number / m;
-        r = number % m;
+        q = abs(number / m);
+        r = abs(number % m);
 
-        code = encodeQuotient(q) + truncated_binary_codes[r - 1];
+        std::cout << q << " " << r << std::endl;
+        code = encodeQuotient(q) + truncated_binary_codes[r];
+
+        if (number > 0) code += "0";
+        else if (number < 0) code += "1";
 
         return code;
     }
@@ -93,10 +97,17 @@ class GOLOMBCodec {
             rest_code = number_code.substr(q + 1, size_of_rest);
         }
         std::vector<std::string>::iterator itr = std::find(truncated_binary_codes.begin(), truncated_binary_codes.end(), rest_code);
-        int r = std::distance(truncated_binary_codes.begin(), itr) + 1;
+        int r = std::distance(truncated_binary_codes.begin(), itr);
 
         int number = m * q + r;
-        return number;
+
+        if (number == 0) {
+            return number;
+        } else {
+            if (number_code[number_code.length() - 1] == '1') return -number;
+            else return number;
+        }
+
     }
 
 
@@ -110,46 +121,6 @@ class GOLOMBCodec {
         code += "1";
 
         return code;
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-    std::string TruncatedBinary (int x, int n) {
-        // Set k = floor(log2(n)), i.e., k such that 2^k <= n < 2^(k+1).
-        int k = 0, t = n;
-        while (t > 1) { k++;  t >>= 1; }
-
-        // Set u to the number of unused codewords = 2^(k+1) - n.
-        int u = (1 << k + 1) - n;
-
-        if (x < u)
-            return Binary(x, k); 
-        else
-            return Binary(x + u, k + 1);
-    }
-
-    std::string Binary (int x, int len) {
-        std::string s = "";
-        while (x != 0) {
-            if (x % 2 == 0)
-                s = '0' + s;
-            else  s = '1' + s;
-            
-            x >>= 1;
-        }
-        while (s.length() < len)
-            s = '0' + s;
-        return s;
     }
 
 };
