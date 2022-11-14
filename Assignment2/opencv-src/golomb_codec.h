@@ -76,7 +76,6 @@ class GOLOMBCodec {
         q = abs(number / m);
         r = abs(number % m);
 
-        std::cout << q << " " << r << std::endl;
         code = encodeQuotient(q) + truncated_binary_codes[r];
 
         if (number > 0) code += "0";

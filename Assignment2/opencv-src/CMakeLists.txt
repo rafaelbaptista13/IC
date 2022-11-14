@@ -19,3 +19,6 @@ target_link_libraries (cp_image ${OpenCV_LIBS})
 add_executable (test test.cpp)
 target_link_libraries (test)
 
+add_executable (audio_codec audio_codec.cpp)
+target_link_libraries (audio_codec sndfile)
+
