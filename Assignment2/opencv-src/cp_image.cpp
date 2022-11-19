@@ -91,7 +91,9 @@ int main(int argc,const char** argv) {
     float intensity_factor { 2 };
 
     if (argc < 4 ) {
-        cerr << "./cp_image [-r degree (def 90)] [-i intensity_factor (def 2)] <mode> <original_img> <output_img>\n";
+        cerr << "./cp_image [-r degree (def 90)]\n";
+        cerr << "           [-i intensity_factor (def 2)]\n";
+        cerr << "           <mode> <original_img> <output_img>\n";
         return 1;
     }
 
@@ -100,14 +102,19 @@ int main(int argc,const char** argv) {
     string output_file_name = argv[argc - 1];
 
     Mat originalImg;    // declaring a matrix named originalImg
-    Mat copyImg;        // declaring a matrix named copyImg
+    Mat manipulatedImg; // declaring a matrix named manipulatedImg
 
     originalImg = imread(original_file_name);   // loading the original image in the matrix
 
     if (mode == "ROTATE") {
         for(int n = 1 ; n < argc ; n++)
             if(string(argv[n]) == "-r") {
-                degree = atof(argv[n+1]);
+                try {
+                    degree = atof(argv[n+1]);
+                } catch (invalid_argument const&) {	
+                    cerr << "Error: invalid r parameter requested.\n";
+                    return 1;
+                }
                 break;
             }
 
@@ -124,44 +131,49 @@ int main(int argc,const char** argv) {
         // Resize matrix according to the degree
         if (degree / 90 % 2 == 0) {
             // normal matrix size
-            copyImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+            manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
         } else {
             // change matrix size
-            copyImg = Mat(originalImg.cols, originalImg.rows, originalImg.type());
+            manipulatedImg = Mat(originalImg.cols, originalImg.rows, originalImg.type());
         }
-        rotate_pixels(originalImg, copyImg, degree);
+        rotate_pixels(originalImg, manipulatedImg, degree);
     } else if (mode == "NEGATIVE") {
-        copyImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
-        negative_pixels(originalImg, copyImg);
+        manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+        negative_pixels(originalImg, manipulatedImg);
     } else if (mode == "MIRROR_VERTICAL") {
-        copyImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
-        mirror_vertical_pixels(originalImg, copyImg);
+        manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+        mirror_vertical_pixels(originalImg, manipulatedImg);
     } else if (mode == "MIRROR_HORIZONTAL") {
-        copyImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
-        mirror_horizontal_pixels(originalImg, copyImg);
+        manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+        mirror_horizontal_pixels(originalImg, manipulatedImg);
     } else if (mode == "INTENSITY") {
 
         for(int n = 1 ; n < argc ; n++)
             if(string(argv[n]) == "-i") {
-                intensity_factor = atof(argv[n+1]);
+                try {
+                    intensity_factor = atof(argv[n+1]);
+                } catch (invalid_argument const&) {	
+                    cerr << "Error: invalid i parameter requested.\n";
+                    return 1;
+                }
                 break;
             }
 
-        // Check degree multiple of 90
+        // Check intensity factor is greater than 0
         if (intensity_factor <= 0 ) {
             cerr << "Intensity factor should be greater than 0.\n";
             return 1;
         }
 
 
-        copyImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
-        change_intensity_pixels(originalImg, copyImg, intensity_factor);
+        manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+        change_intensity_pixels(originalImg, manipulatedImg, intensity_factor);
     } else if (mode == "COPY") {
-        copyImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
-        copy_pixels(originalImg, copyImg);
+        manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+        copy_pixels(originalImg, manipulatedImg);
     }
 
-    imwrite(output_file_name, copyImg);  
+    imwrite(output_file_name, manipulatedImg);  
 
     cout << "Image is saved successfully…" << endl;
     return 0;
