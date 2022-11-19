@@ -120,7 +120,7 @@ int main(int argc,const char** argv) {
 
         // Check degree multiple of 90
         if (degree % 90 != 0 ) {
-            cerr << "Degree should be multiple of 90.\n";
+            cerr << "Error: invalid r parameter requested. Degree should be multiple of 90.\n";
             return 1;
         }
 
@@ -161,7 +161,7 @@ int main(int argc,const char** argv) {
 
         // Check intensity factor is greater than 0
         if (intensity_factor <= 0 ) {
-            cerr << "Intensity factor should be greater than 0.\n";
+            cerr << "Error: invalid i parameter requested. Intensity factor should be greater than 0.\n";
             return 1;
         }
 
@@ -171,6 +171,9 @@ int main(int argc,const char** argv) {
     } else if (mode == "COPY") {
         manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
         copy_pixels(originalImg, manipulatedImg);
+    } else {
+        cerr << "Error: invalid mode selected.\n";
+        return 1;
     }
 
     imwrite(output_file_name, manipulatedImg);  
