@@ -352,6 +352,9 @@ int main(int argc,const char** argv) {
 	// Write wavFileInput sampleRate to coded file
     string encoded_wavFileInputSampleRate = codec.encode(sndFile.samplerate());
     bitStream.write_n_bits(encoded_wavFileInputSampleRate);
+    // Write predictor_type to coded file
+    string encoded_predictor_type = codec.encode(predictor_type);
+    bitStream.write_n_bits(encoded_predictor_type);
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
