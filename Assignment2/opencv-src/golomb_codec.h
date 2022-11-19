@@ -84,6 +84,18 @@ class GOLOMBCodec {
         return code;
     }
 
+    std::string encodeQuotient(int quotient) {
+
+        std::string code { "" };
+
+        for (int i = 0; i < quotient; i++) {
+            code+="0";
+        }
+        code += "1";
+
+        return code;
+    }
+
 
     int decode(std::string number_code) {
 		int q = 0;
@@ -109,6 +121,7 @@ class GOLOMBCodec {
         }
 
     }
+    
     int decodeWithBitstream(BitStream& bitStream) {
 		int q = 0;
 
@@ -137,17 +150,7 @@ class GOLOMBCodec {
     }
 
 
-    std::string encodeQuotient(int quotient) {
-
-        std::string code { "" };
-
-        for (int i = 0; i < quotient; i++) {
-            code+="0";
-        }
-        code += "1";
-
-        return code;
-    }
+    
 
 };
 

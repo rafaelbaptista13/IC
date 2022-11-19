@@ -32,6 +32,10 @@
     "type_traits": "cpp",
     "typeinfo": "cpp",
     "utility": "cpp",
-    "bitset": "cpp"
+    "bitset": "cpp",
+    "deque": "cpp",
+    "unordered_map": "cpp",
+    "fstream": "cpp",
+    "functional": "cpp"
   }
 }
