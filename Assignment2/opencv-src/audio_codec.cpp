@@ -2,13 +2,14 @@
 #include <sndfile.hh>
 #include "golomb_codec.h"
 #include "BitStream.h"
+#include "wav_quant.h"
 
 using namespace std;
 
 constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
 
 
-void encodePredictor0MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor0MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec, WAVQuant* wavQuant) {
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
     int residual;
@@ -29,7 +30,7 @@ void encodePredictor0MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
 }
 
 
-void encodePredictor0StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor0StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec, WAVQuant* wavQuant) {
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
@@ -70,7 +71,7 @@ void encodePredictor0StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
 }
 
 
-void encodePredictor1MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor1MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec, WAVQuant* wavQuant) {
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
     int residual;
@@ -84,7 +85,10 @@ void encodePredictor1MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
             
             residual = samples[index] - last_residual;
 
-            encoded_residual = codec.encode(residual);
+            if (wavQuant != nullptr)
+                encoded_residual = codec.encode(wavQuant->quantize(residual));
+            else
+                encoded_residual = codec.encode(residual);
 
             bitStream.write_n_bits(encoded_residual);
 
@@ -94,7 +98,7 @@ void encodePredictor1MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
 }
 
 
-void encodePredictor1StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor1StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec, WAVQuant* wavQuant) {
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
@@ -124,8 +128,17 @@ void encodePredictor1StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
                 midChannelResidual = meanValue - lastMeanValue;
                 sideChannelResidual = diffValue - lastDiffValue;
 
-                string encoded_mid_channel_residual = codec.encode(midChannelResidual);
-                string encoded_side_channel_residual = codec.encode(sideChannelResidual);
+                string encoded_mid_channel_residual;
+                string encoded_side_channel_residual;
+
+                if (wavQuant != nullptr){
+                    encoded_mid_channel_residual = codec.encode( wavQuant->quantize(midChannelResidual));
+                    encoded_side_channel_residual = codec.encode( wavQuant->quantize(sideChannelResidual));
+                }
+                else {
+                    encoded_mid_channel_residual = codec.encode(midChannelResidual);
+                    encoded_side_channel_residual = codec.encode(sideChannelResidual);
+                }
 
                 bitStream.write_n_bits(encoded_mid_channel_residual);
                 bitStream.write_n_bits(encoded_side_channel_residual);
@@ -140,7 +153,7 @@ void encodePredictor1StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
 }
 
 
-void encodePredictor2MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor2MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec, WAVQuant* wavQuant) {
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
@@ -167,7 +180,7 @@ void encodePredictor2MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
 }
 
 
-void encodePredictor2StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor2StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec, WAVQuant* wavQuant) {
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
@@ -215,7 +228,7 @@ void encodePredictor2StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
 }
 
 
-void encodePredictor3MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor3MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec, WAVQuant* wavQuant) {
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
     int residual;
@@ -241,7 +254,7 @@ void encodePredictor3MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
 }
 
 
-void encodePredictor3StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor3StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec, WAVQuant* wavQuant) {
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
@@ -291,31 +304,31 @@ void encodePredictor3StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
 }
 
 
-void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, GOLOMBCodec codec) {
+void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, GOLOMBCodec codec, WAVQuant* wavQuant) {
 
     if (predictor_type == 0) {
-        encodePredictor0MonoChannel(sndFile, bitStream, codec);
+        encodePredictor0MonoChannel(sndFile, bitStream, codec, wavQuant);
     } else if (predictor_type == 1) {
-		encodePredictor1MonoChannel(sndFile, bitStream, codec);
+		encodePredictor1MonoChannel(sndFile, bitStream, codec, wavQuant);
     } else if (predictor_type == 2) {
-		encodePredictor2MonoChannel(sndFile, bitStream, codec);
+		encodePredictor2MonoChannel(sndFile, bitStream, codec, wavQuant);
     } else if (predictor_type == 3) {
-		encodePredictor3MonoChannel(sndFile, bitStream, codec);
+		encodePredictor3MonoChannel(sndFile, bitStream, codec, wavQuant);
     }
 
 }
 
 
-void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, GOLOMBCodec codec) {
+void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, GOLOMBCodec codec, WAVQuant* wavQuant) {
     
     if (predictor_type == 0) {
-        encodePredictor0StereoChannel(sndFile, bitStream, codec);
+        encodePredictor0StereoChannel(sndFile, bitStream, codec, wavQuant);
     } else if (predictor_type == 1) {
-		encodePredictor1StereoChannel(sndFile, bitStream, codec);
+		encodePredictor1StereoChannel(sndFile, bitStream, codec, wavQuant);
     } else if (predictor_type == 2) {
-		encodePredictor2StereoChannel(sndFile, bitStream, codec);
+		encodePredictor2StereoChannel(sndFile, bitStream, codec, wavQuant);
     } else if (predictor_type == 3) {
-		encodePredictor3StereoChannel(sndFile, bitStream, codec);
+		encodePredictor3StereoChannel(sndFile, bitStream, codec, wavQuant);
     }
 }
 
@@ -324,6 +337,7 @@ int main(int argc,const char** argv) {
 
     int predictor_type = 0;
     int golomb_m_parameter = 6;
+    int quantize_bits = 0;
 
     if(argc < 3) {
 		cerr << "Usage: ./audio_codec [ -p predictor (def 0) ]\n";
@@ -348,7 +362,7 @@ int main(int argc,const char** argv) {
 		return 1;
 	}
 
-    for(int n = 1 ; n < argc ; n++)
+    for(int n = 1 ; n < argc ; n++){
 		if(string(argv[n]) == "-p") {
             try {
 			    predictor_type = atoi(argv[n+1]);
@@ -361,11 +375,8 @@ int main(int argc,const char** argv) {
                 cerr << "Error: invalid p parameter requested\n";
                 return 1;
             }
-			break;
 		}
-
-    for(int n = 1 ; n < argc ; n++)
-		if(string(argv[n]) == "-m") {
+		else if(string(argv[n]) == "-m") {
             try {
 			    golomb_m_parameter = atoi(argv[n+1]);
 
@@ -377,11 +388,31 @@ int main(int argc,const char** argv) {
                 cerr << "Error: invalid m parameter requested\n";
                 return 1;
             }
-			break;
 		}
+        else if(string(argv[n]) == "-q") {
+            try {
+                quantize_bits = atoi(argv[n+1]);
 
+                if(quantize_bits < 1) {
+                    cerr << "Error: invalid q parameter requested\n";
+                    return 1;
+                }
+            } catch (invalid_argument const&) {
+                cerr << "Error: invalid q parameter requested\n";
+                return 1;
+            }
+        }
+
+
+    }
+
+    WAVQuant* wavQuant = nullptr;
     GOLOMBCodec codec {golomb_m_parameter};
     BitStream bitStream { argv[argc-1], "w" };
+
+    if (quantize_bits > 0){
+        wavQuant = new WAVQuant(quantize_bits, 1);
+    }
     
     // Write golomb_m_parameter to coded file
 	bitStream.write_n_bits(std::bitset<32>(golomb_m_parameter).to_string());
@@ -401,8 +432,8 @@ int main(int argc,const char** argv) {
     string encoded_predictor_type = codec.encode(predictor_type);
     bitStream.write_n_bits(encoded_predictor_type);
 
-    if (sndFile.channels() == 1) encodeMonoAudio(sndFile, predictor_type, bitStream, codec);
-    else if (sndFile.channels() == 2) encodeStereoAudio(sndFile, predictor_type, bitStream, codec);
+    if (sndFile.channels() == 1) encodeMonoAudio(sndFile, predictor_type, bitStream, codec, wavQuant);
+    else if (sndFile.channels() == 2) encodeStereoAudio(sndFile, predictor_type, bitStream, codec, wavQuant);
 
     bitStream.close();
 
