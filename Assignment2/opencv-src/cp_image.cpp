@@ -4,65 +4,66 @@
 using namespace cv;
 using namespace std;
 
-void copy_pixels(Mat& originalImg, Mat& copyImg) {
+void copy_pixels(Mat& originalImg, Mat& manipulatedImg) {
     for(int i=0; i<originalImg.rows; i++) {
         for (int j=0; j<originalImg.cols; j++) {
-            copyImg.at<Vec3b>(i, j) = originalImg.at<Vec3b>(i, j);
+            manipulatedImg.at<Vec3b>(i, j) = originalImg.at<Vec3b>(i, j);
         }
     }
 }
 
-void negative_pixels(Mat& originalImg, Mat& copyImg) {
+void negative_pixels(Mat& originalImg, Mat& manipulatedImg) {
     for(int i=0; i<originalImg.rows; i++) {
         for (int j=0; j<originalImg.cols; j++) {
             uchar r = 255 - originalImg.at<Vec3b>(i, j)[0];
             uchar g = 255 - originalImg.at<Vec3b>(i, j)[1];
             uchar b = 255 - originalImg.at<Vec3b>(i, j)[2];
-            copyImg.at<Vec3b>(i, j) = Vec3b(r, g, b);
+            manipulatedImg.at<Vec3b>(i, j) = Vec3b(r, g, b);
         }
     }
 }
 
-void mirror_vertical_pixels(Mat& originalImg, Mat& copyImg) {
+void mirror_horizontal_pixels(Mat& originalImg, Mat& manipulatedImg) {
     for(int i=0; i<originalImg.rows; i++) {
         for (int j=0; j<originalImg.cols; j++) {
-            copyImg.at<Vec3b>(originalImg.cols - i, j) = originalImg.at<Vec3b>(i, j);
+            manipulatedImg.at<Vec3b>(i,originalImg.cols - j) = originalImg.at<Vec3b>(i, j);
         }
     }
 }
 
-void mirror_horizontal_pixels(Mat& originalImg, Mat& copyImg) {
+void mirror_vertical_pixels(Mat& originalImg, Mat& manipulatedImg) {
     for(int i=0; i<originalImg.rows; i++) {
         for (int j=0; j<originalImg.cols; j++) {
-            copyImg.at<Vec3b>(i,originalImg.cols - j) = originalImg.at<Vec3b>(i, j);
+            manipulatedImg.at<Vec3b>(originalImg.cols - i, j) = originalImg.at<Vec3b>(i, j);
         }
     }
 }
 
-void rotate_pixels(Mat& originalImg, Mat& copyImg, int degree) {
+
+void rotate_pixels(Mat& originalImg, Mat& manipulatedImg, int degree) {
 
     switch (degree / 90 % 4) {
         case 0:     // 0 Degrees
-            copy_pixels(originalImg, copyImg);
+            copy_pixels(originalImg, manipulatedImg);
             break;
         case 1:     // 90 Degrees
             for(int i=0; i<originalImg.rows; i++) {
                 for (int j=0; j<originalImg.cols; j++) {
-                    copyImg.at<Vec3b>(originalImg.rows - i - 1, j) = originalImg.at<Vec3b>(j, i);
+                    manipulatedImg.at<Vec3b>(originalImg.rows - i - 1, j) = originalImg.at<Vec3b>(j, i);
                 }
             }
             break;
         case 2:     // 180 Degrees
             for(int i=0; i<originalImg.rows; i++) {
                 for (int j=0; j<originalImg.cols; j++) {
-                    copyImg.at<Vec3b>(i, j) = originalImg.at<Vec3b>(originalImg.rows - i, originalImg.cols - j);
+                    manipulatedImg.at<Vec3b>(i, j) = originalImg.at<Vec3b>(originalImg.rows - i, originalImg.cols - j);
                 }
             }
             break;
         case 3:     // 270 Degrees
             for(int i=0; i<originalImg.rows; i++) {
                 for (int j=0; j<originalImg.cols; j++) {
-                    copyImg.at<Vec3b>(j, originalImg.rows - i - 1) = originalImg.at<Vec3b>(i, j);
+                    manipulatedImg.at<Vec3b>(j, originalImg.rows - i - 1) = originalImg.at<Vec3b>(i, j);
                 }
             }
             break;
@@ -72,13 +73,13 @@ void rotate_pixels(Mat& originalImg, Mat& copyImg, int degree) {
 }
 
 
-void change_intensity_pixels(Mat& originalImg, Mat& copyImg, float intensity_factor) {
+void change_intensity_pixels(Mat& originalImg, Mat& manipulatedImg, float intensity_factor) {
     for(int i=0; i<originalImg.rows; i++) {
         for (int j=0; j<originalImg.cols; j++) {
             uchar r =  (originalImg.at<Vec3b>(i, j)[0] * intensity_factor > 255) ? 255 : originalImg.at<Vec3b>(i, j)[0] * intensity_factor;
             uchar g =  (originalImg.at<Vec3b>(i, j)[1] * intensity_factor > 255) ? 255 : originalImg.at<Vec3b>(i, j)[1] * intensity_factor;
             uchar b =  (originalImg.at<Vec3b>(i, j)[2] * intensity_factor > 255) ? 255 : originalImg.at<Vec3b>(i, j)[2] * intensity_factor;
-            copyImg.at<Vec3b>(i, j) = Vec3b(r, g, b);
+            manipulatedImg.at<Vec3b>(i, j) = Vec3b(r, g, b);
         }
     }
 }
