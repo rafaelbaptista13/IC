@@ -4,6 +4,10 @@
 using namespace cv;
 using namespace std;
 
+/*
+    Function used to copy an image pixel by pixel
+*/
+
 void copy_pixels(Mat& originalImg, Mat& manipulatedImg) {
     for(int i=0; i<originalImg.rows; i++) {
         for (int j=0; j<originalImg.cols; j++) {
@@ -11,6 +15,11 @@ void copy_pixels(Mat& originalImg, Mat& manipulatedImg) {
         }
     }
 }
+
+
+/*
+    Function used to create a negative version of an image
+*/
 
 void negative_pixels(Mat& originalImg, Mat& manipulatedImg) {
     for(int i=0; i<originalImg.rows; i++) {
@@ -23,6 +32,11 @@ void negative_pixels(Mat& originalImg, Mat& manipulatedImg) {
     }
 }
 
+
+/*
+    Function used to create an horizontal mirror of an image
+*/
+
 void mirror_horizontal_pixels(Mat& originalImg, Mat& manipulatedImg) {
     for(int i=0; i<originalImg.rows; i++) {
         for (int j=0; j<originalImg.cols; j++) {
@@ -30,6 +44,11 @@ void mirror_horizontal_pixels(Mat& originalImg, Mat& manipulatedImg) {
         }
     }
 }
+
+
+/*
+    Function used to create a vertical mirror of an image
+*/
 
 void mirror_vertical_pixels(Mat& originalImg, Mat& manipulatedImg) {
     for(int i=0; i<originalImg.rows; i++) {
@@ -39,6 +58,10 @@ void mirror_vertical_pixels(Mat& originalImg, Mat& manipulatedImg) {
     }
 }
 
+
+/*
+    Function used to apply positive and negative rotation to an image.
+*/
 
 void rotate_pixels(Mat& originalImg, Mat& manipulatedImg, int degree) {
 
@@ -73,6 +96,10 @@ void rotate_pixels(Mat& originalImg, Mat& manipulatedImg, int degree) {
 }
 
 
+/*
+    Function used to change pixel's light intensity on an image
+*/
+
 void change_intensity_pixels(Mat& originalImg, Mat& manipulatedImg, float intensity_factor) {
     for(int i=0; i<originalImg.rows; i++) {
         for (int j=0; j<originalImg.cols; j++) {
@@ -85,6 +112,9 @@ void change_intensity_pixels(Mat& originalImg, Mat& manipulatedImg, float intens
 }
 
 
+/*
+    Main Function
+*/
 
 int main(int argc,const char** argv) {
 
@@ -98,16 +128,21 @@ int main(int argc,const char** argv) {
         return 1;
     }
 
-    string mode = argv[argc - 3];
-    string original_file_name = argv[argc - 2];
-    string output_file_name = argv[argc - 1];
+    // Read Input Parameters
+    string mode = argv[argc - 3];               // Program use mode. Define operation to apply.
+    string original_file_name = argv[argc - 2]; // Original input file.
+    string output_file_name = argv[argc - 1];   // Output file.
 
+    // Declare Matrix variables
     Mat originalImg;    // declaring a matrix named originalImg
     Mat manipulatedImg; // declaring a matrix named manipulatedImg
 
+    // Load the original image from file.
     originalImg = imread(original_file_name);   // loading the original image in the matrix
 
     if (mode == "ROTATE") {
+
+        // Read degree paramter
         for(int n = 1 ; n < argc ; n++)
             if(string(argv[n]) == "-r") {
                 try {
@@ -125,6 +160,7 @@ int main(int argc,const char** argv) {
             return 1;
         }
 
+        // Change negative rotations to corresponding positive rotations
         if (degree < 0) {
             degree = 360 + (degree % 360);
         }
@@ -134,21 +170,33 @@ int main(int argc,const char** argv) {
             // normal matrix size
             manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
         } else {
-            // change matrix size
+            // manipulated matrix size
             manipulatedImg = Mat(originalImg.cols, originalImg.rows, originalImg.type());
         }
+
+        // Apply rotate operation
         rotate_pixels(originalImg, manipulatedImg, degree);
     } else if (mode == "NEGATIVE") {
+        // Resize manipulated matrix
         manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+
+        // Apply negative operation
         negative_pixels(originalImg, manipulatedImg);
     } else if (mode == "MIRROR_VERTICAL") {
+        // Resize manipulated matrix
         manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+
+        // Apply vertical mirror operation
         mirror_vertical_pixels(originalImg, manipulatedImg);
     } else if (mode == "MIRROR_HORIZONTAL") {
+        // Resize manipulated matrix
         manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+
+        // Apply horizontal mirror operation
         mirror_horizontal_pixels(originalImg, manipulatedImg);
     } else if (mode == "INTENSITY") {
 
+        // Read intensity_factor parameter
         for(int n = 1 ; n < argc ; n++)
             if(string(argv[n]) == "-i") {
                 try {
@@ -166,19 +214,28 @@ int main(int argc,const char** argv) {
             return 1;
         }
 
-
+        // Resize manipulated matrix 
         manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+
+        // Apply change intensity operation
         change_intensity_pixels(originalImg, manipulatedImg, intensity_factor);
     } else if (mode == "COPY") {
+        // Resize manipulated matrix
         manipulatedImg = Mat(originalImg.rows, originalImg.cols, originalImg.type());
+
+        // Apply copy image operation
         copy_pixels(originalImg, manipulatedImg);
     } else {
+        // Invalid mode selected. Notify user
         cerr << "Error: invalid mode selected.\n";
         return 1;
     }
 
+
+    // Write manipulated Matrix to output file
     imwrite(output_file_name, manipulatedImg);  
 
+    // Notify user. Operation was successfully done.
     cout << "Image is saved successfully…" << endl;
     return 0;
 }

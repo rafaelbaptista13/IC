@@ -1,5 +1,5 @@
 #include <iostream>
-#include "golomb_codec.h"
+#include "GolombCode.h"
 #include "BitStream.h"
 
 using namespace std;
@@ -7,7 +7,7 @@ using namespace std;
 int main(int argc,const char** argv) {
 
    
-    GOLOMBCodec codec {11};
+    GolombCode codec {11};
     
     string encoded_number = codec.encode(-1);
     cout << encoded_number << endl;
