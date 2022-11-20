@@ -1,6 +1,6 @@
 #include <iostream>
 #include <sndfile.hh>
-#include "golomb_codec.h"
+#include "GolombCode.h"
 #include "BitStream.h"
 
 using namespace std;
@@ -8,7 +8,7 @@ using namespace std;
 constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
 
 
-void encodePredictor0MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor0MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GolombCode golombCode) {
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
     int residual;
@@ -21,7 +21,7 @@ void encodePredictor0MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
             
             residual = samples[index];
 
-            encoded_residual = codec.encode(residual);
+            encoded_residual = golombCode.encode(residual);
 
             bitStream.write_n_bits(encoded_residual);
         }
@@ -29,7 +29,7 @@ void encodePredictor0MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
 }
 
 
-void encodePredictor0StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor0StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GolombCode golombCode) {
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
@@ -57,8 +57,8 @@ void encodePredictor0StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
                 std::cout << "Mid Channel "<< midChannelResidual << std::endl;
                 std::cout << "Side Channel "<< sideChannelResidual << std::endl;
 
-                string encoded_mid_channel_residual = codec.encode(midChannelResidual);
-                string encoded_side_channel_residual = codec.encode(sideChannelResidual);
+                string encoded_mid_channel_residual = golombCode.encode(midChannelResidual);
+                string encoded_side_channel_residual = golombCode.encode(sideChannelResidual);
 
                 bitStream.write_n_bits(encoded_mid_channel_residual);
                 bitStream.write_n_bits(encoded_side_channel_residual);
@@ -70,7 +70,7 @@ void encodePredictor0StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
 }
 
 
-void encodePredictor1MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor1MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GolombCode golombCode) {
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
     int residual;
@@ -84,7 +84,7 @@ void encodePredictor1MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
             
             residual = samples[index] - last_residual;
 
-            encoded_residual = codec.encode(residual);
+            encoded_residual = golombCode.encode(residual);
 
             bitStream.write_n_bits(encoded_residual);
 
@@ -94,7 +94,7 @@ void encodePredictor1MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
 }
 
 
-void encodePredictor1StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor1StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GolombCode golombCode) {
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
@@ -124,8 +124,8 @@ void encodePredictor1StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
                 midChannelResidual = meanValue - lastMeanValue;
                 sideChannelResidual = diffValue - lastDiffValue;
 
-                string encoded_mid_channel_residual = codec.encode(midChannelResidual);
-                string encoded_side_channel_residual = codec.encode(sideChannelResidual);
+                string encoded_mid_channel_residual = golombCode.encode(midChannelResidual);
+                string encoded_side_channel_residual = golombCode.encode(sideChannelResidual);
 
                 bitStream.write_n_bits(encoded_mid_channel_residual);
                 bitStream.write_n_bits(encoded_side_channel_residual);
@@ -140,7 +140,7 @@ void encodePredictor1StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
 }
 
 
-void encodePredictor2MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor2MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GolombCode golombCode) {
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
@@ -155,7 +155,7 @@ void encodePredictor2MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
             
             residual = samples[index] - 2 * last_residuals[0] - last_residuals[1];
 
-            encoded_residual = codec.encode(residual);
+            encoded_residual = golombCode.encode(residual);
 
             bitStream.write_n_bits(encoded_residual);
 
@@ -167,7 +167,7 @@ void encodePredictor2MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
 }
 
 
-void encodePredictor2StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor2StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GolombCode golombCode) {
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
@@ -197,8 +197,8 @@ void encodePredictor2StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
                 midChannelResidual = meanValue -  (2 * lastMeanValues[0]) - lastMeanValues[1];
                 sideChannelResidual = diffValue - (2 * lastDiffValues[0]) - lastDiffValues[1];
 
-                string encoded_mid_channel_residual = codec.encode(midChannelResidual);
-                string encoded_side_channel_residual = codec.encode(sideChannelResidual);
+                string encoded_mid_channel_residual = golombCode.encode(midChannelResidual);
+                string encoded_side_channel_residual = golombCode.encode(sideChannelResidual);
 
                 bitStream.write_n_bits(encoded_mid_channel_residual);
                 bitStream.write_n_bits(encoded_side_channel_residual);
@@ -215,7 +215,7 @@ void encodePredictor2StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
 }
 
 
-void encodePredictor3MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor3MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GolombCode golombCode) {
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
     int residual;
@@ -229,7 +229,7 @@ void encodePredictor3MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
             
             residual = samples[index] - 3 * last_residuals[0] - 3 * last_residuals[1] + last_residuals[2];
 
-            encoded_residual = codec.encode(residual);
+            encoded_residual = golombCode.encode(residual);
 
             bitStream.write_n_bits(encoded_residual);
             
@@ -241,7 +241,7 @@ void encodePredictor3MonoChannel(SndfileHandle sndFile, BitStream &bitStream, GO
 }
 
 
-void encodePredictor3StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GOLOMBCodec codec) {
+void encodePredictor3StereoChannel(SndfileHandle sndFile, BitStream &bitStream, GolombCode golombCode) {
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
@@ -271,8 +271,8 @@ void encodePredictor3StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
                 midChannelResidual = meanValue - (3 * lastMeanValues[0]) - (3 * lastMeanValues[1]) + lastMeanValues[2];
                 sideChannelResidual = diffValue - (3 * lastDiffValues[0]) - (3 * lastDiffValues[1]) + lastDiffValues[2];
 
-                string encoded_mid_channel_residual = codec.encode(midChannelResidual);
-                string encoded_side_channel_residual = codec.encode(sideChannelResidual);
+                string encoded_mid_channel_residual = golombCode.encode(midChannelResidual);
+                string encoded_side_channel_residual = golombCode.encode(sideChannelResidual);
 
                 bitStream.write_n_bits(encoded_mid_channel_residual);
                 bitStream.write_n_bits(encoded_side_channel_residual);
@@ -291,31 +291,31 @@ void encodePredictor3StereoChannel(SndfileHandle sndFile, BitStream &bitStream, 
 }
 
 
-void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, GOLOMBCodec codec) {
+void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, GolombCode golombCode) {
 
     if (predictor_type == 0) {
-        encodePredictor0MonoChannel(sndFile, bitStream, codec);
+        encodePredictor0MonoChannel(sndFile, bitStream, golombCode);
     } else if (predictor_type == 1) {
-		encodePredictor1MonoChannel(sndFile, bitStream, codec);
+		encodePredictor1MonoChannel(sndFile, bitStream, golombCode);
     } else if (predictor_type == 2) {
-		encodePredictor2MonoChannel(sndFile, bitStream, codec);
+		encodePredictor2MonoChannel(sndFile, bitStream, golombCode);
     } else if (predictor_type == 3) {
-		encodePredictor3MonoChannel(sndFile, bitStream, codec);
+		encodePredictor3MonoChannel(sndFile, bitStream, golombCode);
     }
 
 }
 
 
-void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, GOLOMBCodec codec) {
+void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, GolombCode golombCode) {
     
     if (predictor_type == 0) {
-        encodePredictor0StereoChannel(sndFile, bitStream, codec);
+        encodePredictor0StereoChannel(sndFile, bitStream, golombCode);
     } else if (predictor_type == 1) {
-		encodePredictor1StereoChannel(sndFile, bitStream, codec);
+		encodePredictor1StereoChannel(sndFile, bitStream, golombCode);
     } else if (predictor_type == 2) {
-		encodePredictor2StereoChannel(sndFile, bitStream, codec);
+		encodePredictor2StereoChannel(sndFile, bitStream, golombCode);
     } else if (predictor_type == 3) {
-		encodePredictor3StereoChannel(sndFile, bitStream, codec);
+		encodePredictor3StereoChannel(sndFile, bitStream, golombCode);
     }
 }
 
@@ -380,29 +380,29 @@ int main(int argc,const char** argv) {
 			break;
 		}
 
-    GOLOMBCodec codec {golomb_m_parameter};
+    GolombCode golombCode {golomb_m_parameter};
     BitStream bitStream { argv[argc-1], "w" };
     
     // Write golomb_m_parameter to coded file
 	bitStream.write_n_bits(std::bitset<32>(golomb_m_parameter).to_string());
     // Write wavFileInput format to coded file
-    string encoded_wavFileInputFormat = codec.encode(sndFile.format());
+    string encoded_wavFileInputFormat = golombCode.encode(sndFile.format());
     bitStream.write_n_bits(encoded_wavFileInputFormat);
 	// Write wavFileInput channels to coded file
-    string encoded_wavFileInputChannels = codec.encode(sndFile.channels());
+    string encoded_wavFileInputChannels = golombCode.encode(sndFile.channels());
     bitStream.write_n_bits(encoded_wavFileInputChannels);
 	// Write wavFileInput frames to coded file
-    string encoded_wavFileInputFrames = codec.encode(sndFile.frames());
+    string encoded_wavFileInputFrames = golombCode.encode(sndFile.frames());
     bitStream.write_n_bits(encoded_wavFileInputFrames);
 	// Write wavFileInput sampleRate to coded file
-    string encoded_wavFileInputSampleRate = codec.encode(sndFile.samplerate());
+    string encoded_wavFileInputSampleRate = golombCode.encode(sndFile.samplerate());
     bitStream.write_n_bits(encoded_wavFileInputSampleRate);
     // Write predictor_type to coded file
-    string encoded_predictor_type = codec.encode(predictor_type);
+    string encoded_predictor_type = golombCode.encode(predictor_type);
     bitStream.write_n_bits(encoded_predictor_type);
 
-    if (sndFile.channels() == 1) encodeMonoAudio(sndFile, predictor_type, bitStream, codec);
-    else if (sndFile.channels() == 2) encodeStereoAudio(sndFile, predictor_type, bitStream, codec);
+    if (sndFile.channels() == 1) encodeMonoAudio(sndFile, predictor_type, bitStream, golombCode);
+    else if (sndFile.channels() == 2) encodeStereoAudio(sndFile, predictor_type, bitStream, golombCode);
 
     bitStream.close();
 

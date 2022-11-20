@@ -9,13 +9,13 @@
 #include <algorithm>
 #include "BitStream.h"
 
-class GOLOMBCodec {
+class GolombCode {
   private:
 	int m;          // Divsion Factor
     std::vector<std::string> truncated_binary_codes;
 
   public:
-	GOLOMBCodec(int m) {
+	GolombCode(int m) {
 		this->m = m;
 
         int min_num_symbols_per_code = floor(log2(m));
