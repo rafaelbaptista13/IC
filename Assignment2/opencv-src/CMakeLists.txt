@@ -22,3 +22,6 @@ target_link_libraries (test)
 add_executable (audio_codec audio_codec.cpp)
 target_link_libraries (audio_codec sndfile)
 
+add_executable (audio_decoder audio_decoder.cpp)
+target_link_libraries (audio_decoder sndfile)
+
