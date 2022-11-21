@@ -7,71 +7,32 @@ using namespace std;
 
 constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
 
-vector<short> decodePredictor0MonoChannel(vector<short> samples, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
-    for (int i=0; i < num_of_elements; i++) {
-        // Get residual
-        int residual = golombCode.decodeWithBitstream(bitStreamRead);
-
-        // Convert to original
-        samples[i] = residual;
-    }
-    return samples;
-}
-
-vector<short> decodePredictor1MonoChannel(vector<short> samples, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
-    samples[0] = golombCode.decodeWithBitstream(bitStreamRead);
-    for (int i=1; i<num_of_elements; i++) {
-        // Get residual
-        int residual = golombCode.decodeWithBitstream(bitStreamRead);
-
-        // Convert to original
-        samples[i] = samples[i-1] + residual;
-    }
-    return samples;
-}
-
-vector<short> decodePredictor2MonoChannel(vector<short> samples, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
-    samples[0] = golombCode.decodeWithBitstream(bitStreamRead);
-    samples[1] = 2 * samples[0] + golombCode.decodeWithBitstream(bitStreamRead);
-	for (int i=2; i<num_of_elements; i++) {
-        // Get residual
-        int residual = golombCode.decodeWithBitstream(bitStreamRead);
-
-        // Convert to original
-        samples[i] = residual + (2*samples[i-1]) + samples[i-2];
-    }
-    return samples;
-}
-
-
-vector<short> decodePredictor3MonoChannel(vector<short> samples, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
-    samples[0] = golombCode.decodeWithBitstream(bitStreamRead);
-    samples[1] = 3 * samples[0] + golombCode.decodeWithBitstream(bitStreamRead);
-    samples[2] = 3 * samples[0] + 3 * samples[1] + golombCode.decodeWithBitstream(bitStreamRead);
-    for (int i=3; i < num_of_elements; i++) {
-        // Get residual
-        int residual = golombCode.decodeWithBitstream(bitStreamRead);
-
-        // Convert to original
-        samples[i] = residual + 3 * samples[i-1] + 3 * samples[i-2] - samples[i-3];
-    }
-    return samples;
-}
-
-
-
 vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
 
-    if (predictor_type == 0) {
-        return decodePredictor0MonoChannel(samples, golombCode, num_of_elements, bitStreamRead);
-    } else if (predictor_type == 1) {
-		return decodePredictor1MonoChannel(samples, golombCode, num_of_elements, bitStreamRead);
-    } else if (predictor_type == 2) {
-		return decodePredictor2MonoChannel(samples, golombCode, num_of_elements, bitStreamRead);
-    } else {
-		return decodePredictor3MonoChannel(samples, golombCode, num_of_elements, bitStreamRead);
-    }
+    int residual;
+    int lastSamples[] = {0,0,0};
     
+    for (int i=0; i < num_of_elements; i++) {
+        // Get residual
+        residual = golombCode.decodeWithBitstream(bitStreamRead);
+
+        // Convert to original
+        if (predictor_type == 0) {
+            samples[i] = residual;
+        } else if (predictor_type == 1) {
+            samples[i] = lastSamples[0] + residual;
+        } else if (predictor_type == 2) {
+            samples[i] = residual + (2*lastSamples[0]) + lastSamples[1];
+        } else {  
+            samples[i] = residual + 3 * lastSamples[0] + 3 * lastSamples[1] - lastSamples[2];
+        }
+
+        lastSamples[2] = lastSamples[1];
+        lastSamples[1] = lastSamples[0];
+        lastSamples[0] = samples[i];
+    }
+    return samples;
+
 }
 
 
