@@ -9,6 +9,12 @@ using namespace std;
 constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
 
 
+string encodeResidual(GolombCode golombCode, WAVQuant* wavQuant, int residual) {
+    if (wavQuant != nullptr)
+        return golombCode.encode(wavQuant->quantize(residual));
+    else
+        return golombCode.encode(residual);
+}
 
 
 void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, GolombCode golombCode, WAVQuant* wavQuant) {
@@ -17,10 +23,10 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
 
     int residual = 0;
-    string encoded_residual;
 
+    string encoded_residuals_array[] = {"", "", "", ""};
     int last_residuals[] = {0, 0, 0};
-    
+
 	while((nFrames = sndFile.readf(samples.data(), FRAMES_BUFFER_SIZE))) {
 		samples.resize(nFrames * sndFile.channels());
 
@@ -35,23 +41,62 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
                 residual = samples[index] - 2 * last_residuals[0] - last_residuals[1];
             } else if (predictor_type == 3) {
                 residual = samples[index] - 3 * last_residuals[0] - 3 * last_residuals[1] + last_residuals[2];
+            } else if (predictor_type == 4) {
+
+                residual = samples[index];
+                encoded_residuals_array[0] += encodeResidual(golombCode, wavQuant, residual);
+
+                residual = samples[index] - last_residuals[0];
+                encoded_residuals_array[1] += encodeResidual(golombCode, wavQuant, residual);
+                
+                residual = samples[index] - 2 * last_residuals[0] - last_residuals[1];
+                encoded_residuals_array[2] += encodeResidual(golombCode, wavQuant, residual);
+        
+                residual = samples[index] - 3 * last_residuals[0] - 3 * last_residuals[1] + last_residuals[2];
+                encoded_residuals_array[3] += encodeResidual(golombCode, wavQuant, residual);
+
             }
-
-            if (wavQuant != nullptr)
-                encoded_residual = golombCode.encode(wavQuant->quantize(residual));
-            else
-                encoded_residual = golombCode.encode(residual);
-
-            bitStream.write_n_bits(encoded_residual);
+            
+            if (predictor_type != 4) {
+                string encoded_residual = encodeResidual(golombCode, wavQuant, residual);
+                bitStream.write_n_bits(encoded_residual);
+            }
             
             last_residuals[2] = last_residuals[1];      // index - 3
             last_residuals[1] = last_residuals[0];      // index - 2
             last_residuals[0] = samples[index];         // index - 1
+
+
+            if (index > 0 && index%10000 == 0 && predictor_type == 4) {
+                std::cout << "---------" << std::endl;
+                std::cout << encoded_residuals_array[0].length() << std::endl;
+
+                unsigned int smallestSize = encoded_residuals_array[0].length();
+                int bestPredictor = 0;
+                for (int i = 1; i<4; i++) {
+                    std::cout << encoded_residuals_array[i].length() << std::endl;
+
+                    if ( encoded_residuals_array[i].length() < smallestSize) {
+                        smallestSize = encoded_residuals_array[i].length();
+                        bestPredictor = i;
+                    }
+                }
+
+                bitStream.write_n_bits(std::bitset<32>(bestPredictor).to_string().substr(30, 32));
+                std::cout << bestPredictor << std::endl;
+                std::cout << std::bitset<32>(bestPredictor).to_string().substr(30, 32) << std::endl;
+                
+                bitStream.write_n_bits(encoded_residuals_array[bestPredictor]);
+            }
         }
     }
 
+    
 
 }
+
+
+
 
 
 void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, GolombCode golombCode, WAVQuant* wavQuant) {
@@ -82,7 +127,7 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
             } else {
 
                 meanValue = (lastSample + samples[index]) / 2;
-                diffValue = (lastSample - samples[index]) / 2;
+                diffValue = (lastSample - samples[index]);
 
                 if (predictor_type == 0) {
                     midChannelResidual = meanValue;
@@ -134,7 +179,7 @@ int main(int argc,const char** argv) {
     if(argc < 3) {
 		cerr << "Usage: ./audio_codec [ -p predictor (def 0) ]\n";
 		cerr << "                      input_file output_file\n";
-		cerr << "Example: ./audio_codec -p 3 sample.wav\n";
+		cerr << "Example: ./audio_codec -p 0 sample.wav compressed.wav\n";
 		return 1;
 	}
 
@@ -159,7 +204,7 @@ int main(int argc,const char** argv) {
             try {
 			    predictor_type = atoi(argv[n+1]);
                 
-                if(predictor_type < 0 || predictor_type > 3) {
+                if(predictor_type < 0 || predictor_type > 4) {
                     cerr << "Error: invalid p parameter requested\n";
                     return 1;
                 }

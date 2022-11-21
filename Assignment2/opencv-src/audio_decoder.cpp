@@ -18,22 +18,6 @@ vector<short> decodePredictor0MonoChannel(vector<short> samples, GolombCode golo
     return samples;
 }
 
-vector<short> decodePredictor0StereoChannel(vector<short> samples, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
-    for (int i=0; i < num_of_elements; i+=2) {
-        
-        // Get residuals
-        int mid_residual = golombCode.decodeWithBitstream(bitStreamRead);
-        int side_residual = golombCode.decodeWithBitstream(bitStreamRead);
-        int mid_val = mid_residual;
-        int side_val = side_residual;
-
-        // Convert to original
-        samples[i] = mid_val + side_val;
-        samples[i+1] = mid_val - side_val;
-    }
-    return samples;
-}
-
 vector<short> decodePredictor1MonoChannel(vector<short> samples, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
     samples[0] = golombCode.decodeWithBitstream(bitStreamRead);
     for (int i=1; i<num_of_elements; i++) {
@@ -42,26 +26,6 @@ vector<short> decodePredictor1MonoChannel(vector<short> samples, GolombCode golo
 
         // Convert to original
         samples[i] = samples[i-1] + residual;
-    }
-    return samples;
-}
-
-vector<short> decodePredictor1StereoChannel(vector<short> samples, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
-    int lastMeanValue = 0;
-    int lastDiffValue = 0;
-    for (int i=0; i < num_of_elements; i+=2) {
-        // Get residuals
-        int mid_residual = golombCode.decodeWithBitstream(bitStreamRead);
-        int side_residual = golombCode.decodeWithBitstream(bitStreamRead);
-        int mid_val = mid_residual + lastMeanValue;
-        int side_val = side_residual + lastDiffValue;
-
-        lastMeanValue = mid_val;
-        lastDiffValue = side_val;
-
-        // Convert to original
-        samples[i] = mid_val + side_val;
-        samples[i+1] = mid_val - side_val;
     }
     return samples;
 }
@@ -79,27 +43,6 @@ vector<short> decodePredictor2MonoChannel(vector<short> samples, GolombCode golo
     return samples;
 }
 
-vector<short> decodePredictor2StereoChannel(vector<short> samples, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
-    int lastMeanValues[] = {0,0};
-    int lastDiffValues[] = {0,0};
-    for (int i=0; i < num_of_elements; i+=2) {
-        // Get residuals
-        int mid_residual = golombCode.decodeWithBitstream(bitStreamRead);
-        int side_residual = golombCode.decodeWithBitstream(bitStreamRead);
-        int mid_val = mid_residual + (2 * lastMeanValues[0]) + lastMeanValues[1];
-        int side_val = side_residual + (2 * lastDiffValues[0]) + lastDiffValues[1];
-
-        lastMeanValues[1] = lastMeanValues[0];
-        lastMeanValues[0] = mid_val;
-        lastDiffValues[1] = lastDiffValues[0];
-        lastDiffValues[0] = side_val;
-
-        // Convert to original
-        samples[i] = mid_val + side_val;
-        samples[i+1] = mid_val - side_val;
-    }
-    return samples;
-}
 
 vector<short> decodePredictor3MonoChannel(vector<short> samples, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
     samples[0] = golombCode.decodeWithBitstream(bitStreamRead);
@@ -115,29 +58,7 @@ vector<short> decodePredictor3MonoChannel(vector<short> samples, GolombCode golo
     return samples;
 }
 
-vector<short> decodePredictor3StereoChannel(vector<short> samples, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
-    int lastMeanValues[] = {0,0,0};
-    int lastDiffValues[] = {0,0,0};
-    for (int i=0; i < num_of_elements; i+=2) {
-        // Get residuals
-        int mid_residual = golombCode.decodeWithBitstream(bitStreamRead);
-        int side_residual = golombCode.decodeWithBitstream(bitStreamRead);
-        int mid_val = mid_residual + (3 * lastMeanValues[0]) + (3 * lastMeanValues[1]) - lastMeanValues[2];
-        int side_val = side_residual + (3 * lastDiffValues[0]) + (3 * lastDiffValues[1]) - lastDiffValues[2];
 
-        lastMeanValues[2] = lastMeanValues[1];
-        lastMeanValues[1] = lastMeanValues[0];
-        lastMeanValues[0] = mid_val;
-        lastDiffValues[2] = lastDiffValues[1];
-        lastDiffValues[1] = lastDiffValues[0];
-        lastDiffValues[0] = side_val;
-
-        // Convert to original
-        samples[i] = mid_val + side_val;
-        samples[i+1] = mid_val - side_val;
-    }
-    return samples;
-}
 
 vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
 
@@ -155,15 +76,52 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, GolombC
 
 
 vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, GolombCode golombCode, int num_of_elements, BitStream &bitStream) {
-    if (predictor_type == 0) {
-        return decodePredictor0StereoChannel(samples, golombCode, num_of_elements, bitStream);
-    } else if (predictor_type == 1) {
-		return decodePredictor1StereoChannel(samples, golombCode, num_of_elements, bitStream);
-    } else if (predictor_type == 2) {
-		return decodePredictor2StereoChannel(samples, golombCode, num_of_elements, bitStream);
-    } else {
-		return decodePredictor3StereoChannel(samples, golombCode, num_of_elements, bitStream);
+
+    int mid_val;
+    int mid_residual;
+
+    int side_val;
+    int side_residual;
+    
+    int lastMeanValues[] = {0,0,0};
+    int lastDiffValues[] = {0,0,0};
+    for (int i=0; i < num_of_elements; i+=2) {
+        // Get residuals
+        mid_residual = golombCode.decodeWithBitstream(bitStream);
+        side_residual = golombCode.decodeWithBitstream(bitStream);
+
+        if (predictor_type == 0) {
+            mid_val = mid_residual;
+            side_val = side_residual;
+        } else if (predictor_type == 1) {
+            mid_val = mid_residual + lastMeanValues[0];
+            side_val = side_residual + lastDiffValues[0];
+        } else if (predictor_type == 2) {
+            mid_val = mid_residual + (2 * lastMeanValues[0]) + lastMeanValues[1];
+            side_val = side_residual + (2 * lastDiffValues[0]) + lastDiffValues[1];
+        } else {
+            mid_val = mid_residual + (3 * lastMeanValues[0]) + (3 * lastMeanValues[1]) - lastMeanValues[2];
+            side_val = side_residual + (3 * lastDiffValues[0]) + (3 * lastDiffValues[1]) - lastDiffValues[2];
+        }
+
+        if (side_val % 2 == 1) {
+            mid_val += 0.5;
+        }
+
+        lastMeanValues[2] = lastMeanValues[1];
+        lastMeanValues[1] = lastMeanValues[0];
+        lastMeanValues[0] = mid_val;
+        lastDiffValues[2] = lastDiffValues[1];
+        lastDiffValues[1] = lastDiffValues[0];
+        lastDiffValues[0] = side_val;
+
+        // Convert to original
+        samples[i] = (2*mid_val - side_val)/2;
+        samples[i+1] = side_val + samples[i];
     }
+
+    return samples;
+        
 }
 
 
@@ -171,7 +129,7 @@ int main(int argc,const char** argv) {
 
     if(argc < 3) {
 		cerr << "Usage: ./audio_decoder input_file output_file\n";
-		cerr << "Example: ./audio_decoder -p 3 sample.wav\n";
+		cerr << "Example: ./audio_decoder compressed.wav output.wav\n";
 		return 1;
 	}
 
