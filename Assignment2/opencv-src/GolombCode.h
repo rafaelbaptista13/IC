@@ -133,7 +133,7 @@ class GolombCode {
         // Decode truncated binary code
         int size_of_rest = floor(log2(m));
         std::string rest_code = number_code.substr(q + 1, size_of_rest);
-        while (std::find(truncated_binary_codes.begin(), truncated_binary_codes.end(), rest_code ) == truncated_binary_codes.end() ) {
+        if (std::find(truncated_binary_codes.begin(), truncated_binary_codes.end(), rest_code ) == truncated_binary_codes.end() ) {
             size_of_rest++;
             rest_code = number_code.substr(q + 1, size_of_rest);
         }
