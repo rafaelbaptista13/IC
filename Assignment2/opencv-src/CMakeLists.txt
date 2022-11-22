@@ -16,9 +16,6 @@ SET (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BASE_DIR}/../opencv-bin)
 add_executable (cp_image cp_image.cpp)
 target_link_libraries (cp_image ${OpenCV_LIBS})
 
-add_executable (test test.cpp)
-target_link_libraries (test)
-
 add_executable (audio_encoder audio_encoder.cpp)
 target_link_libraries (audio_encoder sndfile)
 

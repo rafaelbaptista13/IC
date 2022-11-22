@@ -2,42 +2,64 @@
 #include <sndfile.hh>
 #include "GolombCode.h"
 #include "BitStream.h"
+#include "map"
 
 using namespace std;
 
 constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
+map<string, int> binaryToInt = {{"00", 0}, {"01", 1}, {"10", 2}, {"11", 3}};
 
-vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, GolombCode golombCode, int num_of_elements, BitStream &bitStreamRead) {
+vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, GolombCode golombCode, int num_of_elements, BitStream &bitStream, int blockSize) {
+
+    int elementsRead = 0;
+    int selectedPredictor;
 
     int residual;
     int lastSamples[] = {0,0,0};
-    
-    for (int i=0; i < num_of_elements; i++) {
-        // Get residual
-        residual = golombCode.decodeWithBitstream(bitStreamRead);
 
-        // Convert to original
-        if (predictor_type == 0) {
-            samples[i] = residual;
-        } else if (predictor_type == 1) {
-            samples[i] = lastSamples[0] + residual;
-        } else if (predictor_type == 2) {
-            samples[i] = residual + (2*lastSamples[0]) + lastSamples[1];
-        } else {  
-            samples[i] = residual + 3 * lastSamples[0] + 3 * lastSamples[1] - lastSamples[2];
+    while (elementsRead < num_of_elements) {
+
+        if (predictor_type == 4)
+            selectedPredictor = binaryToInt[bitStream.get_n_bits(2)];
+        else
+            selectedPredictor = predictor_type;
+
+        if (elementsRead + blockSize > num_of_elements) {
+            blockSize = num_of_elements - elementsRead;
         }
 
-        lastSamples[2] = lastSamples[1];
-        lastSamples[1] = lastSamples[0];
-        lastSamples[0] = samples[i];
+        for (int i=0; i < blockSize; i++) {
+            // Get residual
+            residual = golombCode.decodeWithBitstream(bitStream);
+
+            // Convert to original
+            if (selectedPredictor == 0) {
+                samples[elementsRead] = residual;
+            } else if (selectedPredictor == 1) {
+                samples[elementsRead] = lastSamples[0] + residual;
+            } else if (selectedPredictor == 2) {
+                samples[elementsRead] = residual + (2*lastSamples[0]) + lastSamples[1];
+            } else {  
+                samples[elementsRead] = residual + 3 * lastSamples[0] + 3 * lastSamples[1] - lastSamples[2];
+            }
+
+            lastSamples[2] = lastSamples[1];
+            lastSamples[1] = lastSamples[0];
+            lastSamples[0] = samples[elementsRead];
+            elementsRead++;
+        }
     }
+
     return samples;
 
 }
 
 
-vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, GolombCode golombCode, int num_of_elements, BitStream &bitStream) {
+vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, GolombCode golombCode, int num_of_elements, BitStream &bitStream, int blockSize) {
 
+    int elementsRead = 0;
+    int selectedPredictor;
+    
     int mid_val;
     int mid_residual;
 
@@ -46,39 +68,54 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, Golom
     
     int lastMeanValues[] = {0,0,0};
     int lastDiffValues[] = {0,0,0};
-    for (int i=0; i < num_of_elements; i+=2) {
-        // Get residuals
-        mid_residual = golombCode.decodeWithBitstream(bitStream);
-        side_residual = golombCode.decodeWithBitstream(bitStream);
 
-        if (predictor_type == 0) {
-            mid_val = mid_residual;
-            side_val = side_residual;
-        } else if (predictor_type == 1) {
-            mid_val = mid_residual + lastMeanValues[0];
-            side_val = side_residual + lastDiffValues[0];
-        } else if (predictor_type == 2) {
-            mid_val = mid_residual + (2 * lastMeanValues[0]) + lastMeanValues[1];
-            side_val = side_residual + (2 * lastDiffValues[0]) + lastDiffValues[1];
-        } else {
-            mid_val = mid_residual + (3 * lastMeanValues[0]) + (3 * lastMeanValues[1]) - lastMeanValues[2];
-            side_val = side_residual + (3 * lastDiffValues[0]) + (3 * lastDiffValues[1]) - lastDiffValues[2];
+    while (elementsRead < num_of_elements) {
+
+        if (predictor_type == 4)
+            selectedPredictor = binaryToInt[bitStream.get_n_bits(2)];
+        else
+            selectedPredictor = predictor_type;
+
+        if (elementsRead + blockSize > num_of_elements) {
+            blockSize = num_of_elements - elementsRead;
         }
+    
+        for (int i=0; i < blockSize; i+=2) {
+            // Get residuals
+            mid_residual = golombCode.decodeWithBitstream(bitStream);
+            side_residual = golombCode.decodeWithBitstream(bitStream);
 
-        if (side_val % 2 == 1) {
-            mid_val += 0.5;
+            if (selectedPredictor == 0) {
+                mid_val = mid_residual;
+                side_val = side_residual;
+            } else if (selectedPredictor == 1) {
+                mid_val = mid_residual + lastMeanValues[0];
+                side_val = side_residual + lastDiffValues[0];
+            } else if (selectedPredictor == 2) {
+                mid_val = mid_residual + (2 * lastMeanValues[0]) + lastMeanValues[1];
+                side_val = side_residual + (2 * lastDiffValues[0]) + lastDiffValues[1];
+            } else {
+                mid_val = mid_residual + (3 * lastMeanValues[0]) + (3 * lastMeanValues[1]) - lastMeanValues[2];
+                side_val = side_residual + (3 * lastDiffValues[0]) + (3 * lastDiffValues[1]) - lastDiffValues[2];
+            }
+
+            if (side_val % 2 == 1) {
+                mid_val += 0.5;
+            }
+
+            lastMeanValues[2] = lastMeanValues[1];
+            lastMeanValues[1] = lastMeanValues[0];
+            lastMeanValues[0] = mid_val;
+            lastDiffValues[2] = lastDiffValues[1];
+            lastDiffValues[1] = lastDiffValues[0];
+            lastDiffValues[0] = side_val;
+
+            // Convert to original
+            samples[elementsRead] = (2*mid_val - side_val)/2;
+            samples[elementsRead+1] = side_val + samples[elementsRead];
+
+            elementsRead+=2;
         }
-
-        lastMeanValues[2] = lastMeanValues[1];
-        lastMeanValues[1] = lastMeanValues[0];
-        lastMeanValues[0] = mid_val;
-        lastDiffValues[2] = lastDiffValues[1];
-        lastDiffValues[1] = lastDiffValues[0];
-        lastDiffValues[0] = side_val;
-
-        // Convert to original
-        samples[i] = (2*mid_val - side_val)/2;
-        samples[i+1] = side_val + samples[i];
     }
 
     return samples;
@@ -111,6 +148,8 @@ int main(int argc,const char** argv) {
 	int frames = golombCode.decodeWithBitstream(bitStreamRead);
 	// Get wavFileInput sampleRate
 	int sample_rate = golombCode.decodeWithBitstream(bitStreamRead);
+    // Get block size
+	int blockSize = golombCode.decodeWithBitstream(bitStreamRead);
     // Get predictor type
     int predictor_type = golombCode.decodeWithBitstream(bitStreamRead);
 
@@ -123,8 +162,8 @@ int main(int argc,const char** argv) {
 
 	vector<short> samples(channels * frames);
 
-    if (channels == 1) samples = decodeMonoAudio(samples, predictor_type, golombCode, frames * channels, bitStreamRead);
-    else if (channels == 2) samples = decodeStereoAudio(samples, predictor_type, golombCode, frames * channels, bitStreamRead);
+    if (channels == 1) samples = decodeMonoAudio(samples, predictor_type, golombCode, frames * channels, bitStreamRead, blockSize * channels);
+    else if (channels == 2) samples = decodeStereoAudio(samples, predictor_type, golombCode, frames * channels, bitStreamRead, blockSize * channels);
 
     sfhOut.writef(samples.data(), channels * frames);
 
