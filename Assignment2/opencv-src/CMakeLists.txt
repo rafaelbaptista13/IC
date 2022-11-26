@@ -22,3 +22,8 @@ target_link_libraries (audio_encoder sndfile)
 add_executable (audio_decoder audio_decoder.cpp)
 target_link_libraries (audio_decoder sndfile)
 
+add_executable (image_encoder image_encoder.cpp)
+target_link_libraries (image_encoder ${OpenCV_LIBS})
+
+add_executable (image_decoder image_decoder.cpp)
+target_link_libraries (image_decoder ${OpenCV_LIBS})
