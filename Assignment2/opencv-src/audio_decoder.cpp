@@ -9,7 +9,7 @@ using namespace std;
 constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
 map<string, int> binaryToInt = {{"00", 0}, {"01", 1}, {"10", 2}, {"11", 3}};
 
-vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, GolombCode golombCode, int num_of_elements, BitStream &bitStream, int blockSize) {
+vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num_of_elements, BitStream &bitStream, int blockSize) {
 
     int elementsRead = 0;
     int selectedPredictor;
@@ -55,7 +55,7 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, GolombC
 }
 
 
-vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, GolombCode golombCode, int num_of_elements, BitStream &bitStream, int blockSize) {
+vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int num_of_elements, BitStream &bitStream, int blockSize) {
 
     int elementsRead = 0;
     int selectedPredictor;
@@ -134,24 +134,36 @@ int main(int argc,const char** argv) {
 	// BitStream to read coded file
 	BitStream bitStreamRead { argv[argc-2], "r" };
     // Get parameter m of Golomb Encoding
-    std::string m_str = bitStreamRead.get_n_bits(32);
-	int m = (int32_t) std::bitset<32>(m_str).to_ulong();
+    //std::string m_str = bitStreamRead.get_n_bits(32);
+	//int m = (int32_t) std::bitset<32>(m_str).to_ulong();
 
     // Create Golomb codec
-    GolombCode golombCode {m};
+    //GolombCode golombCode {m};
 
 	// Get wavFileInput format
-	int format = golombCode.decodeWithBitstream(bitStreamRead);
+	//int format = golombCode.decodeWithBitstream(bitStreamRead);
+    std::string format_str = bitStreamRead.get_n_bits(32);
+	int format = (int32_t) std::bitset<32>(format_str).to_ulong();
 	// Get wavFileInput channels
-	int channels = golombCode.decodeWithBitstream(bitStreamRead);
+	//int channels = golombCode.decodeWithBitstream(bitStreamRead);
+    std::string channels_str = bitStreamRead.get_n_bits(32);
+	int channels = (int32_t) std::bitset<32>(channels_str).to_ulong();
 	// Get wavFileInput frames
-	int frames = golombCode.decodeWithBitstream(bitStreamRead);
+	//int frames = golombCode.decodeWithBitstream(bitStreamRead);
+    std::string frames_str = bitStreamRead.get_n_bits(32);
+	int frames = (int32_t) std::bitset<32>(frames_str).to_ulong();
 	// Get wavFileInput sampleRate
-	int sample_rate = golombCode.decodeWithBitstream(bitStreamRead);
+	//int sample_rate = golombCode.decodeWithBitstream(bitStreamRead);
+    std::string sample_rate_str = bitStreamRead.get_n_bits(32);
+	int sample_rate = (int32_t) std::bitset<32>(sample_rate_str).to_ulong();
     // Get block size
-	int blockSize = golombCode.decodeWithBitstream(bitStreamRead);
+	//int blockSize = golombCode.decodeWithBitstream(bitStreamRead);
+    std::string blockSize_str = bitStreamRead.get_n_bits(32);
+	int blockSize = (int32_t) std::bitset<32>(blockSize_str).to_ulong();
     // Get predictor type
-    int predictor_type = golombCode.decodeWithBitstream(bitStreamRead);
+    //int predictor_type = golombCode.decodeWithBitstream(bitStreamRead);
+    std::string predictor_type_str = bitStreamRead.get_n_bits(32);
+	int predictor_type = (int32_t) std::bitset<32>(predictor_type_str).to_ulong();
 
     SndfileHandle sfhOut { argv[argc-1], SFM_WRITE, format,
 	  channels, sample_rate };
@@ -162,8 +174,8 @@ int main(int argc,const char** argv) {
 
 	vector<short> samples(channels * frames);
 
-    if (channels == 1) samples = decodeMonoAudio(samples, predictor_type, golombCode, frames * channels, bitStreamRead, blockSize * channels);
-    else if (channels == 2) samples = decodeStereoAudio(samples, predictor_type, golombCode, frames * channels, bitStreamRead, blockSize * channels);
+    if (channels == 1) samples = decodeMonoAudio(samples, predictor_type, frames * channels, bitStreamRead, blockSize * channels);
+    else if (channels == 2) samples = decodeStereoAudio(samples, predictor_type, frames * channels, bitStreamRead, blockSize * channels);
 
     sfhOut.writef(samples.data(), channels * frames);
 
