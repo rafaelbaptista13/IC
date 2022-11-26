@@ -17,6 +17,10 @@ string encodeResidual(GolombCode golombCode, WAVQuant* wavQuant, int residual) {
         return golombCode.encode(residual);
 }
 
+int optimizeGolombParameter(double sumSamples, double numSamples) {
+    double alfa = (sumSamples/numSamples) / ( (sumSamples/numSamples) + 1);
+    return ceil( -1/log2(alfa) );
+}
 
 void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, WAVQuant* wavQuant) {
 
@@ -24,12 +28,12 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
     double sumSamples_array[] = {0, 0, 0, 0};
     double numSamples = 0;
-    double alfa_array[] = {0, 0, 0, 0};
     int golomb_m_parameter_array[] = {100, 100, 100, 100};       // Initial m = 100
 
     int residual = 0;
     string encoded_residuals_array[] = {"", "", "", ""};
     int last_residuals[] = {0, 0, 0};
+    GolombCode golombCode {100};
 
 	while((nFrames = sndFile.readf(samples.data(), FRAMES_BUFFER_SIZE))) {
 		samples.resize(nFrames * sndFile.channels());
@@ -40,100 +44,43 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
             numSamples += 1;
             if (predictor_type == 0) {
                 residual = samples[index];
-                // Create golombCode
-                GolombCode golombCode {golomb_m_parameter_array[0]};
-                // Encode and write
-                string encoded_residual = encodeResidual(golombCode, wavQuant, residual);
-                bitStream.write_n_bits(encoded_residual);
-                sumSamples_array[0] += residual;
-                // Otimize m parameter for next sample
-                alfa_array[0] = (sumSamples_array[0]/numSamples) / ( (sumSamples_array[0]/numSamples) + 1);
-                golomb_m_parameter_array[0] = ceil( -1/log2(alfa_array[0]) );
-
             } else if (predictor_type == 1) {
                 residual = samples[index] - last_residuals[0];
-                // Create golombCode
-                GolombCode golombCode {golomb_m_parameter_array[1]};
-                // Encode and write
-                string encoded_residual = encodeResidual(golombCode, wavQuant, residual);
-                bitStream.write_n_bits(encoded_residual);
-                sumSamples_array[1] += residual;
-                // Otimize m parameter for next sample
-                alfa_array[1] = (sumSamples_array[1]/numSamples) / ( (sumSamples_array[1]/numSamples) + 1);
-                golomb_m_parameter_array[1] = ceil( -1/log2(alfa_array[1]) );
-
             } else if (predictor_type == 2) {
                 residual = samples[index] - 2 * last_residuals[0] - last_residuals[1];
-                // Create golombCode
-                GolombCode golombCode {golomb_m_parameter_array[2]};
-                // Encode and write
-                string encoded_residual = encodeResidual(golombCode, wavQuant, residual);
-                bitStream.write_n_bits(encoded_residual);
-                sumSamples_array[2] += residual;
-                // Otimize m parameter for next sample
-                alfa_array[2] = (sumSamples_array[2]/numSamples) / ( (sumSamples_array[2]/numSamples) + 1);
-                golomb_m_parameter_array[2] = ceil( -1/log2(alfa_array[2]) );
-
             } else if (predictor_type == 3) {
                 residual = samples[index] - 3 * last_residuals[0] - 3 * last_residuals[1] + last_residuals[2];
+            } else if (predictor_type == 4) {
+                int residuals[4] = {samples[index],
+                                    samples[index] - last_residuals[0],
+                                    samples[index] - 2 * last_residuals[0] - last_residuals[1],
+                                    samples[index] - 3 * last_residuals[0] - 3 * last_residuals[1] + last_residuals[2]};
+
+                for (int predictor = 0; predictor < 4; predictor++) {
+                    // Create golombCode
+                    golombCode = GolombCode(golomb_m_parameter_array[predictor]);
+                    // Encode and append to encodedstring
+                    encoded_residuals_array[predictor] += encodeResidual(golombCode, wavQuant, residuals[predictor]);
+                    sumSamples_array[predictor] += residuals[predictor];
+                    // Otimize m parameter for next sample
+                    golomb_m_parameter_array[predictor] = optimizeGolombParameter(sumSamples_array[predictor], numSamples);
+                }
+            }
+
+            if (predictor_type != 4) {
                 // Create golombCode
-                GolombCode golombCode {golomb_m_parameter_array[3]};
+                golombCode = GolombCode(golomb_m_parameter_array[predictor_type]);
                 // Encode and write
                 string encoded_residual = encodeResidual(golombCode, wavQuant, residual);
                 bitStream.write_n_bits(encoded_residual);
-                sumSamples_array[3] += residual;
+                sumSamples_array[predictor_type] += residual;
                 // Otimize m parameter for next sample
-                alfa_array[3] = (sumSamples_array[3]/numSamples) / ( (sumSamples_array[3]/numSamples) + 1);
-                golomb_m_parameter_array[3] = ceil( -1/log2(alfa_array[3]) );
-
-            } else if (predictor_type == 4) {
-
-                residual = samples[index];
-                // Create golombCode
-                GolombCode golombCode {golomb_m_parameter_array[0]};
-                // Encode and append to encodedstring
-                encoded_residuals_array[0] += encodeResidual(golombCode, wavQuant, residual);
-                sumSamples_array[0] += residual;
-                // Otimize m parameter for next sample
-                alfa_array[0] = (sumSamples_array[0]/numSamples) / ( (sumSamples_array[0]/numSamples) + 1);
-                golomb_m_parameter_array[0] = ceil( -1/log2(alfa_array[0]) );
-
-                residual = samples[index] - last_residuals[0];
-                // Create golombCode
-                GolombCode golombCode {golomb_m_parameter_array[1]};
-                // Encode and append to encodedstring
-                encoded_residuals_array[1] += encodeResidual(golombCode, wavQuant, residual);
-                sumSamples_array[1] += residual;
-                // Otimize m parameter for next sample
-                alfa_array[1] = (sumSamples_array[1]/numSamples) / ( (sumSamples_array[1]/numSamples) + 1);
-                golomb_m_parameter_array[1] = ceil( -1/log2(alfa_array[1]) );
-                
-                residual = samples[index] - 2 * last_residuals[0] - last_residuals[1];
-                // Create golombCode
-                GolombCode golombCode {golomb_m_parameter_array[2]};
-                // Encode and append to encodedstring
-                encoded_residuals_array[2] += encodeResidual(golombCode, wavQuant, residual);
-                sumSamples_array[2] += residual;
-                // Otimize m parameter for next sample
-                alfa_array[2] = (sumSamples_array[2]/numSamples) / ( (sumSamples_array[2]/numSamples) + 1);
-                golomb_m_parameter_array[2] = ceil( -1/log2(alfa_array[2]) );
-        
-                residual = samples[index] - 3 * last_residuals[0] - 3 * last_residuals[1] + last_residuals[2];
-                // Create golombCode
-                GolombCode golombCode {golomb_m_parameter_array[3]};
-                // Encode and append to encodedstring
-                encoded_residuals_array[3] += encodeResidual(golombCode, wavQuant, residual);
-                sumSamples_array[3] += residual;
-                // Otimize m parameter for next sample
-                alfa_array[3] = (sumSamples_array[3]/numSamples) / ( (sumSamples_array[3]/numSamples) + 1);
-                golomb_m_parameter_array[3] = ceil( -1/log2(alfa_array[3]) );
-
+                golomb_m_parameter_array[predictor_type] = optimizeGolombParameter(sumSamples_array[predictor_type], numSamples);
             }
-            
+
             last_residuals[2] = last_residuals[1];      // index - 3
             last_residuals[1] = last_residuals[0];      // index - 2
-            last_residuals[0] = samples[index];         // index - 1
-            
+            last_residuals[0] = samples[index];         // index - 1   
         }
 
         if (predictor_type == 4) {
@@ -148,7 +95,6 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
                 }
             }
 
-
             bitStream.write_n_bits(std::bitset<32>(bestPredictor).to_string().substr(30, 32));
             bitStream.write_n_bits(encoded_residuals_array[bestPredictor]);
 
@@ -158,9 +104,6 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
             encoded_residuals_array[3] = "";
         }
     }
-
-    
-
 }
 
 
@@ -174,8 +117,6 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
     double mid_sumSamples_array[] = {0, 0, 0, 0};
     double side_sumSamples_array[] = {0, 0, 0, 0};
     double numSamples = 0;
-    double mid_alfa_array[] = {0, 0, 0, 0};
-    double side_alfa_array[] = {0, 0, 0, 0};
     int mid_golomb_m_parameter_array[] = {100, 100, 100, 100};          // Initial m = 100
     int side_golomb_m_parameter_array[] = {100, 100, 100, 100};         // Initial m = 100
 
@@ -189,6 +130,8 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
     int sideChannelResidual = 0;
 
     string encoded_residuals_array[] = {"", "", "", ""};
+
+    GolombCode golombCode {100};
 
     while((nFrames = sndFile.readf(samples.data(), FRAMES_BUFFER_SIZE))) {
         samples.resize(nFrames * sndFile.channels());
@@ -206,182 +149,43 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
 
                 if (predictor_type == 0) {
                     midChannelResidual = meanValue;
-                    // Create golombCode
-                    GolombCode golombCode {mid_golomb_m_parameter_array[0]};
-                    // Encode and write
-                    string encoded_residual = encodeResidual(golombCode, wavQuant, midChannelResidual);
-                    bitStream.write_n_bits(encoded_residual);
-                    mid_sumSamples_array[0] += midChannelResidual;
-                    // Otimize m parameter for next sample
-                    mid_alfa_array[0] = (mid_sumSamples_array[0]/numSamples) / ( (mid_sumSamples_array[0]/numSamples) + 1);
-                    mid_golomb_m_parameter_array[0] = ceil( -1/log2(mid_alfa_array[0]) );
-
                     sideChannelResidual = diffValue;
-                    // Create golombCode
-                    GolombCode golombCode {side_golomb_m_parameter_array[0]};
-                    // Encode and write
-                    string encoded_residual = encodeResidual(golombCode, wavQuant, sideChannelResidual);
-                    bitStream.write_n_bits(encoded_residual);
-                    side_sumSamples_array[0] += sideChannelResidual;
-                    // Otimize m parameter for next sample
-                    side_alfa_array[0] = (side_sumSamples_array[0]/numSamples) / ( (side_sumSamples_array[0]/numSamples) + 1);
-                    side_golomb_m_parameter_array[0] = ceil( -1/log2(side_alfa_array[0]) );
-
                 } else if (predictor_type == 1) {
                     midChannelResidual = meanValue - lastMeanValues[0];
-                    // Create golombCode
-                    GolombCode golombCode {mid_golomb_m_parameter_array[1]};
-                    // Encode and write
-                    string encoded_residual = encodeResidual(golombCode, wavQuant, midChannelResidual);
-                    bitStream.write_n_bits(encoded_residual);
-                    mid_sumSamples_array[1] += midChannelResidual;
-                    // Otimize m parameter for next sample
-                    mid_alfa_array[1] = (mid_sumSamples_array[1]/numSamples) / ( (mid_sumSamples_array[1]/numSamples) + 1);
-                    mid_golomb_m_parameter_array[1] = ceil( -1/log2(mid_alfa_array[1]) );
-
                     sideChannelResidual = diffValue - lastDiffValues[0];
-                    // Create golombCode
-                    GolombCode golombCode {side_golomb_m_parameter_array[1]};
-                    // Encode and write
-                    string encoded_residual = encodeResidual(golombCode, wavQuant, sideChannelResidual);
-                    bitStream.write_n_bits(encoded_residual);
-                    side_sumSamples_array[1] += sideChannelResidual;
-                    // Otimize m parameter for next sample
-                    side_alfa_array[1] = (side_sumSamples_array[1]/numSamples) / ( (side_sumSamples_array[1]/numSamples) + 1);
-                    side_golomb_m_parameter_array[1] = ceil( -1/log2(side_alfa_array[1]) );
-
                 } else if (predictor_type == 2) {
                     midChannelResidual = meanValue -  (2 * lastMeanValues[0]) - lastMeanValues[1];
-                    // Create golombCode
-                    GolombCode golombCode {mid_golomb_m_parameter_array[2]};
-                    // Encode and write
-                    string encoded_residual = encodeResidual(golombCode, wavQuant, midChannelResidual);
-                    bitStream.write_n_bits(encoded_residual);
-                    mid_sumSamples_array[2] += midChannelResidual;
-                    // Otimize m parameter for next sample
-                    mid_alfa_array[2] = (mid_sumSamples_array[2]/numSamples) / ( (mid_sumSamples_array[2]/numSamples) + 1);
-                    mid_golomb_m_parameter_array[2] = ceil( -1/log2(mid_alfa_array[2]) );
-
                     sideChannelResidual = diffValue - (2 * lastDiffValues[0]) - lastDiffValues[1];
-                    // Create golombCode
-                    GolombCode golombCode {side_golomb_m_parameter_array[2]};
-                    // Encode and write
-                    string encoded_residual = encodeResidual(golombCode, wavQuant, sideChannelResidual);
-                    bitStream.write_n_bits(encoded_residual);
-                    side_sumSamples_array[2] += sideChannelResidual;
-                    // Otimize m parameter for next sample
-                    side_alfa_array[2] = (side_sumSamples_array[2]/numSamples) / ( (side_sumSamples_array[2]/numSamples) + 1);
-                    side_golomb_m_parameter_array[2] = ceil( -1/log2(side_alfa_array[2]) );
-
                 } else if (predictor_type == 3) {
                     midChannelResidual = meanValue - (3 * lastMeanValues[0]) - (3 * lastMeanValues[1]) + lastMeanValues[2];
-                    // Create golombCode
-                    GolombCode golombCode {mid_golomb_m_parameter_array[3]};
-                    // Encode and write
-                    string encoded_residual = encodeResidual(golombCode, wavQuant, midChannelResidual);
-                    bitStream.write_n_bits(encoded_residual);
-                    mid_sumSamples_array[3] += midChannelResidual;
-                    // Otimize m parameter for next sample
-                    mid_alfa_array[3] = (mid_sumSamples_array[3]/numSamples) / ( (mid_sumSamples_array[3]/numSamples) + 1);
-                    mid_golomb_m_parameter_array[3] = ceil( -1/log2(mid_alfa_array[3]) );
-
                     sideChannelResidual = diffValue - (3 * lastDiffValues[0]) - (3 * lastDiffValues[1]) + lastDiffValues[2];
-                    // Create golombCode
-                    GolombCode golombCode {side_golomb_m_parameter_array[3]};
-                    // Encode and write
-                    string encoded_residual = encodeResidual(golombCode, wavQuant, sideChannelResidual);
-                    bitStream.write_n_bits(encoded_residual);
-                    side_sumSamples_array[3] += sideChannelResidual;
-                    // Otimize m parameter for next sample
-                    side_alfa_array[3] = (side_sumSamples_array[3]/numSamples) / ( (side_sumSamples_array[3]/numSamples) + 1);
-                    side_golomb_m_parameter_array[3] = ceil( -1/log2(side_alfa_array[3]) );
-
                 } else if (predictor_type == 4) {
-
                     
+                    int midChannelResiduals[4] = {meanValue, 
+                                                meanValue - lastMeanValues[0], 
+                                                meanValue -  (2 * lastMeanValues[0]) - lastMeanValues[1], 
+                                                meanValue - (3 * lastMeanValues[0]) - (3 * lastMeanValues[1]) + lastMeanValues[2]};
+                    int sideChannelResiduals[4] = {diffValue,
+                                                diffValue - lastDiffValues[0],
+                                                diffValue - (2 * lastDiffValues[0]) - lastDiffValues[1],
+                                                diffValue - (3 * lastDiffValues[0]) - (3 * lastDiffValues[1]) + lastDiffValues[2]};
 
-                    midChannelResidual = meanValue;
-                    // Create golombCode
-                    GolombCode golombCode {mid_golomb_m_parameter_array[0]};
-                    // Encode and append to encodedstring
-                    encoded_residuals_array[0] += encodeResidual(golombCode, wavQuant, midChannelResidual);
-                    mid_sumSamples_array[0] += midChannelResidual;
-                    // Otimize m parameter for next sample
-                    mid_alfa_array[0] = (mid_sumSamples_array[0]/numSamples) / ( (mid_sumSamples_array[0]/numSamples) + 1);
-                    mid_golomb_m_parameter_array[0] = ceil( -1/log2(mid_alfa_array[0]) );
+                    for (int predictor=0; predictor<4; predictor++) {
+                        golombCode = GolombCode(mid_golomb_m_parameter_array[predictor]);
+                        // Encode and append to encodedstring
+                        encoded_residuals_array[predictor] += encodeResidual(golombCode, wavQuant, midChannelResiduals[predictor]);
+                        mid_sumSamples_array[predictor] += midChannelResiduals[predictor];
+                        // Otimize m parameter for next sample
+                        mid_golomb_m_parameter_array[predictor] = optimizeGolombParameter(mid_sumSamples_array[predictor], numSamples);
 
-                    sideChannelResidual = diffValue;
-                    // Create golombCode
-                    GolombCode golombCode {side_golomb_m_parameter_array[0]};
-                    // Encode and append to encodedstring
-                    encoded_residuals_array[0] += encodeResidual(golombCode, wavQuant, sideChannelResidual);
-                    side_sumSamples_array[0] += sideChannelResidual;
-                    // Otimize m parameter for next sample
-                    side_alfa_array[0] = (side_sumSamples_array[0]/numSamples) / ( (side_sumSamples_array[0]/numSamples) + 1);
-                    side_golomb_m_parameter_array[0] = ceil( -1/log2(side_alfa_array[0]) );
-                   
-
-                    midChannelResidual = meanValue - lastMeanValues[0];
-                    // Create golombCode
-                    GolombCode golombCode {mid_golomb_m_parameter_array[1]};
-                    // Encode and append to encodedstring
-                    encoded_residuals_array[1] += encodeResidual(golombCode, wavQuant, midChannelResidual);
-                    mid_sumSamples_array[1] += midChannelResidual;
-                    // Otimize m parameter for next sample
-                    mid_alfa_array[1] = (mid_sumSamples_array[1]/numSamples) / ( (mid_sumSamples_array[1]/numSamples) + 1);
-                    mid_golomb_m_parameter_array[1] = ceil( -1/log2(mid_alfa_array[1]) );
-
-                    sideChannelResidual = diffValue - lastDiffValues[0];
-                    // Create golombCode
-                    GolombCode golombCode {side_golomb_m_parameter_array[1]};
-                    // Encode and append to encodedstring
-                    encoded_residuals_array[1] += encodeResidual(golombCode, wavQuant, sideChannelResidual);
-                    side_sumSamples_array[1] += sideChannelResidual;
-                    // Otimize m parameter for next sample
-                    side_alfa_array[1] = (side_sumSamples_array[1]/numSamples) / ( (side_sumSamples_array[1]/numSamples) + 1);
-                    side_golomb_m_parameter_array[1] = ceil( -1/log2(side_alfa_array[1]) );
-                    
-
-                    midChannelResidual = meanValue -  (2 * lastMeanValues[0]) - lastMeanValues[1];
-                    // Create golombCode
-                    GolombCode golombCode {mid_golomb_m_parameter_array[2]};
-                    // Encode and append to encodedstring
-                    encoded_residuals_array[2] += encodeResidual(golombCode, wavQuant, midChannelResidual);
-                    mid_sumSamples_array[2] += midChannelResidual;
-                    // Otimize m parameter for next sample
-                    mid_alfa_array[2] = (mid_sumSamples_array[2]/numSamples) / ( (mid_sumSamples_array[2]/numSamples) + 1);
-                    mid_golomb_m_parameter_array[2] = ceil( -1/log2(mid_alfa_array[2]) );
-
-                    sideChannelResidual = diffValue - (2 * lastDiffValues[0]) - lastDiffValues[1];
-                    // Create golombCode
-                    GolombCode golombCode {side_golomb_m_parameter_array[2]};
-                    // Encode and append to encodedstring
-                    encoded_residuals_array[2] += encodeResidual(golombCode, wavQuant, sideChannelResidual);
-                    side_sumSamples_array[2] += sideChannelResidual;
-                    // Otimize m parameter for next sample
-                    side_alfa_array[2] = (side_sumSamples_array[2]/numSamples) / ( (side_sumSamples_array[2]/numSamples) + 1);
-                    side_golomb_m_parameter_array[2] = ceil( -1/log2(side_alfa_array[2]) );
-            
-
-                    midChannelResidual = meanValue - (3 * lastMeanValues[0]) - (3 * lastMeanValues[1]) + lastMeanValues[2];
-                    // Create golombCode
-                    GolombCode golombCode {mid_golomb_m_parameter_array[3]};
-                    // Encode and append to encodedstring
-                    encoded_residuals_array[3] += encodeResidual(golombCode, wavQuant, midChannelResidual);
-                    mid_sumSamples_array[3] += midChannelResidual;
-                    // Otimize m parameter for next sample
-                    mid_alfa_array[3] = (mid_sumSamples_array[3]/numSamples) / ( (mid_sumSamples_array[3]/numSamples) + 1);
-                    mid_golomb_m_parameter_array[3] = ceil( -1/log2(mid_alfa_array[3]) );
-
-                    sideChannelResidual = diffValue - (3 * lastDiffValues[0]) - (3 * lastDiffValues[1]) + lastDiffValues[2];
-                    // Create golombCode
-                    GolombCode golombCode {side_golomb_m_parameter_array[3]};
-                    // Encode and append to encodedstring
-                    encoded_residuals_array[3] += encodeResidual(golombCode, wavQuant, sideChannelResidual);
-                    side_sumSamples_array[3] += sideChannelResidual;
-                    // Otimize m parameter for next sample
-                    side_alfa_array[3] = (side_sumSamples_array[3]/numSamples) / ( (side_sumSamples_array[3]/numSamples) + 1);
-                    side_golomb_m_parameter_array[3] = ceil( -1/log2(side_alfa_array[3]) );
+                        // Create golombCode
+                        golombCode = GolombCode(side_golomb_m_parameter_array[predictor]);
+                        // Encode and append to encodedstring
+                        encoded_residuals_array[predictor] += encodeResidual(golombCode, wavQuant, sideChannelResiduals[predictor]);
+                        side_sumSamples_array[predictor] += sideChannelResiduals[predictor];
+                        // Otimize m parameter for next sample
+                        side_golomb_m_parameter_array[predictor] = optimizeGolombParameter(side_sumSamples_array[predictor], numSamples);
+                    }
 
                 }
                 /*
@@ -393,7 +197,26 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
                     encoded_mid_channel_residual = golombCode.encode(midChannelResidual);
                     encoded_side_channel_residual = golombCode.encode(sideChannelResidual);
                 }*/
+                
+                if (predictor_type != 4) {
+                    // Create golombCode
+                    golombCode = GolombCode(mid_golomb_m_parameter_array[predictor_type]);
+                    // Encode and write
+                    string mid_encoded_residual = encodeResidual(golombCode, wavQuant, midChannelResidual);
+                    bitStream.write_n_bits(mid_encoded_residual);
+                    mid_sumSamples_array[predictor_type] += midChannelResidual;
+                    // Otimize m parameter for next sample
+                    mid_golomb_m_parameter_array[predictor_type] = optimizeGolombParameter(mid_sumSamples_array[predictor_type], numSamples);
 
+                    // Create golombCode
+                    golombCode = GolombCode(side_golomb_m_parameter_array[predictor_type]);
+                    // Encode and write
+                    string side_encoded_residual = encodeResidual(golombCode, wavQuant, sideChannelResidual);
+                    bitStream.write_n_bits(side_encoded_residual);
+                    side_sumSamples_array[predictor_type] += sideChannelResidual;
+                    // Otimize m parameter for next sample
+                    side_golomb_m_parameter_array[predictor_type] = optimizeGolombParameter(side_sumSamples_array[predictor_type], numSamples);
+                }
 
                 lastMeanValues[2] = lastMeanValues[1];
                 lastMeanValues[1] = lastMeanValues[0];
