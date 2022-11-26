@@ -17,9 +17,11 @@ string encodeResidual(GolombCode golombCode, WAVQuant* wavQuant, int residual) {
         return golombCode.encode(residual);
 }
 
-int optimizeGolombParameter(double sumSamples, double numSamples) {
+uint optimizeGolombParameter(double sumSamples, double numSamples) {
+    cout << "sumSamples: " << sumSamples << endl;
+    cout << "numSamples: " << numSamples << endl;
     double alfa = (sumSamples/numSamples) / ( (sumSamples/numSamples) + 1);
-    return ceil( -1/log2(alfa) );
+    return ceil( -1/log2(alfa) ) ;
 }
 
 void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, WAVQuant* wavQuant) {
@@ -28,7 +30,7 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
     double sumSamples_array[] = {0, 0, 0, 0};
     double numSamples = 0;
-    int golomb_m_parameter_array[] = {100, 100, 100, 100};       // Initial m = 100
+    uint golomb_m_parameter_array[] = {100, 100, 100, 100};       // Initial m = 100
 
     int residual = 0;
     string encoded_residuals_array[] = {"", "", "", ""};
@@ -40,6 +42,8 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
 
         for (auto it = samples.begin(); it != samples.end(); ++it) {
             int index = std::distance(samples.begin(), it);
+
+            cout << "sample: " << index << endl;
             
             numSamples += 1;
             if (predictor_type == 0) {
@@ -67,16 +71,25 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
                 }
             }
 
+            cout << "sai 1 if " << endl;
+            
             if (predictor_type != 4) {
+                cout << "golomb_m:  " << golomb_m_parameter_array[predictor_type] << endl;
                 // Create golombCode
                 golombCode = GolombCode(golomb_m_parameter_array[predictor_type]);
+                cout << "criei codigo" << endl;
                 // Encode and write
                 string encoded_residual = encodeResidual(golombCode, wavQuant, residual);
+                cout << "dei encode " << endl;
                 bitStream.write_n_bits(encoded_residual);
+                cout << "escrevi " << endl;
                 sumSamples_array[predictor_type] += residual;
+                cout << "vou otimizar next " << endl;
                 // Otimize m parameter for next sample
                 golomb_m_parameter_array[predictor_type] = optimizeGolombParameter(sumSamples_array[predictor_type], numSamples);
             }
+
+            cout << "sai 2 if " << endl;
 
             last_residuals[2] = last_residuals[1];      // index - 3
             last_residuals[1] = last_residuals[0];      // index - 2
@@ -117,8 +130,8 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
     double mid_sumSamples_array[] = {0, 0, 0, 0};
     double side_sumSamples_array[] = {0, 0, 0, 0};
     double numSamples = 0;
-    int mid_golomb_m_parameter_array[] = {100, 100, 100, 100};          // Initial m = 100
-    int side_golomb_m_parameter_array[] = {100, 100, 100, 100};         // Initial m = 100
+    uint mid_golomb_m_parameter_array[] = {100, 100, 100, 100};          // Initial m = 100
+    uint side_golomb_m_parameter_array[] = {100, 100, 100, 100};         // Initial m = 100
 
     int lastSample = 0;
     int meanValue;

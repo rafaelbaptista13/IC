@@ -11,42 +11,55 @@ map<string, int> binaryToInt = {{"00", 0}, {"01", 1}, {"10", 2}, {"11", 3}};
 
 vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num_of_elements, BitStream &bitStream, int blockSize) {
 
-    int elementsRead = 0;
+    double numSamples = 0;
+    double sumSamples = 0;
+    double alfa = 0;
+    uint golomb_m_parameter = 100;       // Initial m = 100
+
     int selectedPredictor;
 
     int residual;
     int lastSamples[] = {0,0,0};
 
-    while (elementsRead < num_of_elements) {
+    while (numSamples < num_of_elements) {
 
         if (predictor_type == 4)
             selectedPredictor = binaryToInt[bitStream.get_n_bits(2)];
         else
             selectedPredictor = predictor_type;
 
-        if (elementsRead + blockSize > num_of_elements) {
-            blockSize = num_of_elements - elementsRead;
+        if (numSamples + blockSize > num_of_elements) {
+            blockSize = num_of_elements - numSamples;
         }
 
         for (int i=0; i < blockSize; i++) {
+            
+            // Create golombCode
+            GolombCode golombCode {golomb_m_parameter};
+
             // Get residual
             residual = golombCode.decodeWithBitstream(bitStream);
 
             // Convert to original
             if (selectedPredictor == 0) {
-                samples[elementsRead] = residual;
+                samples[numSamples] = residual;
             } else if (selectedPredictor == 1) {
-                samples[elementsRead] = lastSamples[0] + residual;
+                samples[numSamples] = lastSamples[0] + residual;
             } else if (selectedPredictor == 2) {
-                samples[elementsRead] = residual + (2*lastSamples[0]) + lastSamples[1];
+                samples[numSamples] = residual + (2*lastSamples[0]) + lastSamples[1];
             } else {  
-                samples[elementsRead] = residual + 3 * lastSamples[0] + 3 * lastSamples[1] - lastSamples[2];
+                samples[numSamples] = residual + 3 * lastSamples[0] + 3 * lastSamples[1] - lastSamples[2];
             }
 
             lastSamples[2] = lastSamples[1];
             lastSamples[1] = lastSamples[0];
-            lastSamples[0] = samples[elementsRead];
-            elementsRead++;
+            lastSamples[0] = samples[numSamples];
+            
+            sumSamples += residual;
+            numSamples += 1;
+
+            alfa = (sumSamples/numSamples) / ( (sumSamples/numSamples) + 1);
+            golomb_m_parameter = ceil( -1/log2(alfa) );
         }
     }
 
@@ -56,6 +69,14 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num
 
 
 vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int num_of_elements, BitStream &bitStream, int blockSize) {
+
+    double mid_sumSamples = 0;
+    double side_sumSamples = 0;
+    double numSamples = 0;
+    double mid_alfa = 0;
+    double side_alfa = 0;
+    uint mid_golomb_m_parameter = 100;          // Initial m = 100
+    uint side_golomb_m_parameter = 100;         // Initial m = 100
 
     int elementsRead = 0;
     int selectedPredictor;
@@ -81,9 +102,14 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
         }
     
         for (int i=0; i < blockSize; i+=2) {
+
+            // Create golombCodes
+            GolombCode mid_golombCode {mid_golomb_m_parameter};
+            GolombCode side_golombCode {side_golomb_m_parameter};
+
             // Get residuals
-            mid_residual = golombCode.decodeWithBitstream(bitStream);
-            side_residual = golombCode.decodeWithBitstream(bitStream);
+            mid_residual = mid_golombCode.decodeWithBitstream(bitStream);
+            side_residual = side_golombCode.decodeWithBitstream(bitStream);
 
             if (selectedPredictor == 0) {
                 mid_val = mid_residual;
@@ -113,14 +139,23 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
             // Convert to original
             samples[elementsRead] = (2*mid_val - side_val)/2;
             samples[elementsRead+1] = side_val + samples[elementsRead];
-
             elementsRead+=2;
+
+            mid_sumSamples += mid_residual;
+            side_sumSamples += side_residual;
+            numSamples += 1;
+
+            mid_alfa = (mid_sumSamples/numSamples) / ( (mid_sumSamples/numSamples) + 1);
+            side_alfa = (side_sumSamples/numSamples) / ( (side_sumSamples/numSamples) + 1);
+            mid_golomb_m_parameter = ceil( -1/log2(mid_alfa) );
+            side_golomb_m_parameter = ceil( -1/log2(side_alfa) );
         }
     }
 
     return samples;
         
 }
+
 
 
 int main(int argc,const char** argv) {
