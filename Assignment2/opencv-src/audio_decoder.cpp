@@ -11,15 +11,18 @@ map<string, int> binaryToInt = {{"00", 0}, {"01", 1}, {"10", 2}, {"11", 3}};
 
 vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num_of_elements, BitStream &bitStream, int blockSize) {
 
-    double numSamples = 0;
-    double sumSamples = 0;
+    int numSamples = 0;
+    long int sumSamples = 0;
     double alfa = 0;
-    uint golomb_m_parameter = 100;       // Initial m = 100
+    int golomb_m_parameter = 100;       // Initial m = 100
 
     int selectedPredictor;
 
     int residual;
     int lastSamples[] = {0,0,0};
+
+    GolombCode golombCode {golomb_m_parameter};
+    map<int, GolombCode> golombCodes = {{100, golombCode}};
 
     while (numSamples < num_of_elements) {
 
@@ -34,12 +37,18 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num
 
         for (int i=0; i < blockSize; i++) {
             
-            // Create golombCode
-            GolombCode golombCode {golomb_m_parameter};
-
+            if (golombCodes.count(golomb_m_parameter)) {
+                golombCode = golombCodes.find(golomb_m_parameter)->second;
+            } else {
+                // Create golombCode
+                golombCode =  GolombCode(golomb_m_parameter);
+                golombCodes.insert({golomb_m_parameter, golombCode});
+            }
+            
             // Get residual
             residual = golombCode.decodeWithBitstream(bitStream);
-
+            cout << "m code: " << golomb_m_parameter << endl;
+            cout << residual << endl;
             // Convert to original
             if (selectedPredictor == 0) {
                 samples[numSamples] = residual;
@@ -55,10 +64,14 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num
             lastSamples[1] = lastSamples[0];
             lastSamples[0] = samples[numSamples];
             
-            sumSamples += residual;
+            sumSamples += abs(residual);
             numSamples += 1;
-
-            alfa = (sumSamples/numSamples) / ( (sumSamples/numSamples) + 1);
+            cout << "Sum samples: " << sumSamples << endl;
+            double mean = (double) sumSamples/ (double) numSamples;
+            cout << "mean: " << mean << endl;
+            alfa = mean / (mean + 1);
+            cout << "alfa: " << alfa << endl;
+            //alfa = abs(sumSamples/numSamples) / ( abs(sumSamples/numSamples) + 1);
             golomb_m_parameter = ceil( -1/log2(alfa) );
         }
     }
@@ -75,8 +88,8 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
     double numSamples = 0;
     double mid_alfa = 0;
     double side_alfa = 0;
-    uint mid_golomb_m_parameter = 100;          // Initial m = 100
-    uint side_golomb_m_parameter = 100;         // Initial m = 100
+    int mid_golomb_m_parameter = 100;          // Initial m = 100
+    int side_golomb_m_parameter = 100;         // Initial m = 100
 
     int elementsRead = 0;
     int selectedPredictor;
@@ -89,6 +102,10 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
     
     int lastMeanValues[] = {0,0,0};
     int lastDiffValues[] = {0,0,0};
+
+    GolombCode mid_golombCode {100};
+    GolombCode side_golombCode {100};
+    map<int, GolombCode> golombCodes = {{100, mid_golombCode}};
 
     while (elementsRead < num_of_elements) {
 
@@ -103,9 +120,20 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
     
         for (int i=0; i < blockSize; i+=2) {
 
-            // Create golombCodes
-            GolombCode mid_golombCode {mid_golomb_m_parameter};
-            GolombCode side_golombCode {side_golomb_m_parameter};
+            if (golombCodes.count(mid_golomb_m_parameter)) {
+                mid_golombCode = golombCodes.find(mid_golomb_m_parameter)->second;
+            } else {
+                // Create golombCode
+                mid_golombCode =  GolombCode(mid_golomb_m_parameter);
+                golombCodes.insert({mid_golomb_m_parameter, mid_golombCode});
+            }
+            if (golombCodes.count(side_golomb_m_parameter)) {
+                side_golombCode = golombCodes.find(side_golomb_m_parameter)->second;
+            } else {
+                // Create golombCode
+                side_golombCode =  GolombCode(side_golomb_m_parameter);
+                golombCodes.insert({side_golomb_m_parameter, side_golombCode});
+            }
 
             // Get residuals
             mid_residual = mid_golombCode.decodeWithBitstream(bitStream);
@@ -141,12 +169,14 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
             samples[elementsRead+1] = side_val + samples[elementsRead];
             elementsRead+=2;
 
-            mid_sumSamples += mid_residual;
-            side_sumSamples += side_residual;
+            mid_sumSamples += abs(mid_residual);
+            side_sumSamples += abs(side_residual);
             numSamples += 1;
 
-            mid_alfa = (mid_sumSamples/numSamples) / ( (mid_sumSamples/numSamples) + 1);
-            side_alfa = (side_sumSamples/numSamples) / ( (side_sumSamples/numSamples) + 1);
+            double mid_mean = (double) mid_sumSamples/ (double) numSamples;
+            double side_mean = (double) side_sumSamples/ (double) numSamples;
+            mid_alfa = mid_mean / ( mid_mean + 1);
+            side_alfa = side_mean / ( side_mean + 1);
             mid_golomb_m_parameter = ceil( -1/log2(mid_alfa) );
             side_golomb_m_parameter = ceil( -1/log2(side_alfa) );
         }
