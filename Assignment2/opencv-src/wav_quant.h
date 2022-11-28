@@ -8,6 +8,8 @@
 class WAVQuant {
   private:
 	std::map<short, int> approximationMap;
+    std::map<short,int> codeMap;
+    std::map<int,short> inverseCodeMap;
 
   public:
 	WAVQuant(const int num_bits, const int version) {
@@ -37,7 +39,8 @@ class WAVQuant {
         
         if (version == 1) {
             /* Version of not keeping the 0   (-6 -2 2 6) */
-            int counter = 0;  
+            int counter = 0;
+            int codeCounter = 0;
             int currentThreshold = -32768 + interval / 2;
             for (int i = -32768; i<= 32767; i++) {
                 // If the current value is in the middle of two multiples(of the interval value)
@@ -49,6 +52,13 @@ class WAVQuant {
                     currentThreshold = currentThreshold + interval;
                 }
                 approximationMap[i] = currentThreshold;
+
+                if (i >= 0 && codeMap.count(currentThreshold)){
+                    codeMap[currentThreshold] = codeCounter;
+                    inverseCodeMap[codeCounter] = currentThreshold;
+                    code_counter++;
+                }
+
                 counter++;
                 //std::cout << i << "\t" << currentThreshold << '\n';
             }
@@ -66,8 +76,16 @@ class WAVQuant {
         return samples;
 	}
 
-    inline short quantize(const short sample){
+    inline short quantize_value(const short sample){
         return approximationMap[sample];
+    }
+
+    short quantize(const short sample){
+        return codeMap[abs(quantize_value(sample))] * (sample / sample); // to preserve sign
+    }
+
+    short unquantize(const short encodedSample){
+        return inverseCodeMap[abs(encodedSample)] * (encodedSample / encodedSample); // to preserve sign
     }
 };
 
