@@ -49,7 +49,6 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num
             } else {  
                 samples[numSamples] = residual + 3 * lastSamples[0] + 3 * lastSamples[1] - lastSamples[2];
             }
-
             lastSamples[2] = lastSamples[1];
             lastSamples[1] = lastSamples[0];
             lastSamples[0] = samples[numSamples];
@@ -58,7 +57,7 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num
             numSamples += 1;
 
             if (numSamples % window_size == 0) {
-                double mean = (double) sumSamples/ (double) numSamples;
+                double mean = (double) sumSamples/ (double) window_size;
                 alfa = mean / (mean + 1);
                 golomb_m_parameter = ceil( -1/log2(alfa) );
                 if (golombCodes.count(golomb_m_parameter)) {
@@ -78,11 +77,11 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num
 }
 
 
-vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int num_of_elements, BitStream &bitStream, int blockSize) {
+vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int num_of_elements, BitStream &bitStream, int blockSize, int window_size) {
 
-    double mid_sumSamples = 0;
-    double side_sumSamples = 0;
-    double numSamples = 0;
+    int mid_sumSamples = 0;
+    int side_sumSamples = 0;
+    int numSamples = 0;
     double mid_alfa = 0;
     double side_alfa = 0;
     int mid_golomb_m_parameter = 100;          // Initial m = 100
@@ -100,8 +99,8 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
     int lastMeanValues[] = {0,0,0};
     int lastDiffValues[] = {0,0,0};
 
-    GolombCode mid_golombCode {100};
-    GolombCode side_golombCode {100};
+    GolombCode mid_golombCode {mid_golomb_m_parameter};
+    GolombCode side_golombCode {side_golomb_m_parameter};
     map<int, GolombCode> golombCodes = {{100, mid_golombCode}};
 
     while (elementsRead < num_of_elements) {
@@ -116,21 +115,6 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
         }
     
         for (int i=0; i < blockSize; i+=2) {
-
-            if (golombCodes.count(mid_golomb_m_parameter)) {
-                mid_golombCode = golombCodes.find(mid_golomb_m_parameter)->second;
-            } else {
-                // Create golombCode
-                mid_golombCode =  GolombCode(mid_golomb_m_parameter);
-                golombCodes.insert({mid_golomb_m_parameter, mid_golombCode});
-            }
-            if (golombCodes.count(side_golomb_m_parameter)) {
-                side_golombCode = golombCodes.find(side_golomb_m_parameter)->second;
-            } else {
-                // Create golombCode
-                side_golombCode =  GolombCode(side_golomb_m_parameter);
-                golombCodes.insert({side_golomb_m_parameter, side_golombCode});
-            }
 
             // Get residuals
             mid_residual = mid_golombCode.decodeWithBitstream(bitStream);
@@ -169,13 +153,32 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
             mid_sumSamples += abs(mid_residual);
             side_sumSamples += abs(side_residual);
             numSamples += 1;
+            
+            if (numSamples % window_size == 0) {
+                double mid_mean = (double) mid_sumSamples/ (double) window_size;
+                mid_alfa = mid_mean / ( mid_mean + 1);
+                mid_golomb_m_parameter = ceil( -1/log2(mid_alfa) );
+                if (golombCodes.count(mid_golomb_m_parameter)) {
+                    mid_golombCode = golombCodes.find(mid_golomb_m_parameter)->second;
+                } else {
+                    // Create golombCode
+                    mid_golombCode =  GolombCode(mid_golomb_m_parameter);
+                    golombCodes.insert({mid_golomb_m_parameter, mid_golombCode});
+                }
+                mid_sumSamples = 0;
 
-            double mid_mean = (double) mid_sumSamples/ (double) numSamples;
-            double side_mean = (double) side_sumSamples/ (double) numSamples;
-            mid_alfa = mid_mean / ( mid_mean + 1);
-            side_alfa = side_mean / ( side_mean + 1);
-            mid_golomb_m_parameter = ceil( -1/log2(mid_alfa) );
-            side_golomb_m_parameter = ceil( -1/log2(side_alfa) );
+                double side_mean = (double) side_sumSamples/ (double) window_size;
+                side_alfa = side_mean / ( side_mean + 1);
+                side_golomb_m_parameter = ceil( -1/log2(side_alfa) );
+                if (golombCodes.count(side_golomb_m_parameter)) {
+                    side_golombCode = golombCodes.find(side_golomb_m_parameter)->second;
+                } else {
+                    // Create golombCode
+                    side_golombCode =  GolombCode(side_golomb_m_parameter);
+                    golombCodes.insert({side_golomb_m_parameter, side_golombCode});
+                }
+                side_sumSamples = 0;
+            }
         }
     }
 
@@ -228,7 +231,7 @@ int main(int argc,const char** argv) {
 	vector<short> samples(channels * frames);
 
     if (channels == 1) samples = decodeMonoAudio(samples, predictor_type, frames * channels, bitStreamRead, blockSize * channels, window_size);
-    else if (channels == 2) samples = decodeStereoAudio(samples, predictor_type, frames * channels, bitStreamRead, blockSize * channels);
+    else if (channels == 2) samples = decodeStereoAudio(samples, predictor_type, frames * channels, bitStreamRead, blockSize * channels, window_size);
 
     sfhOut.writef(samples.data(), channels * frames);
 
