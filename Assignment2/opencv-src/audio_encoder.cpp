@@ -23,7 +23,7 @@ int optimizeGolombParameter(long int sumSamples, int numSamples) {
     return ceil( -1/log2(alfa) ) ;
 }
 
-void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, WAVQuant* wavQuant) {
+void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, WAVQuant* wavQuant, int window_size) {
 
     size_t nFrames;
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
@@ -33,14 +33,15 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
 
     int residual = 0;
     string encoded_residuals_array[] = {"", "", "", ""};
-    int last_residuals[] = {0, 0, 0};
+    int lastSamples[] = {0, 0, 0};
     GolombCode golombCode {100};
+    GolombCode currentGolombCodes[] = {golombCode, golombCode, golombCode, golombCode};
 
     map<int, GolombCode> golombCodes = {{100, golombCode}};
 
 	while((nFrames = sndFile.readf(samples.data(), FRAMES_BUFFER_SIZE))) {
 		samples.resize(nFrames * sndFile.channels());
-
+        
         for (auto it = samples.begin(); it != samples.end(); ++it) {
             int index = std::distance(samples.begin(), it);
             
@@ -48,61 +49,56 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
             if (predictor_type == 0) {
                 residual = samples[index];
             } else if (predictor_type == 1) {
-                residual = samples[index] - last_residuals[0];
+                residual = samples[index] - lastSamples[0];
             } else if (predictor_type == 2) {
-                residual = samples[index] - 2 * last_residuals[0] - last_residuals[1];
+                residual = samples[index] - 2 * lastSamples[0] - lastSamples[1];
             } else if (predictor_type == 3) {
-                residual = samples[index] - 3 * last_residuals[0] - 3 * last_residuals[1] + last_residuals[2];
+                residual = samples[index] - 3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2];
             } else if (predictor_type == 4) {
                 int residuals[4] = {samples[index],
-                                    samples[index] - last_residuals[0],
-                                    samples[index] - 2 * last_residuals[0] - last_residuals[1],
-                                    samples[index] - 3 * last_residuals[0] - 3 * last_residuals[1] + last_residuals[2]};
+                                    samples[index] - lastSamples[0],
+                                    samples[index] - 2 * lastSamples[0] - lastSamples[1],
+                                    samples[index] - 3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2]};
 
                 for (int predictor = 0; predictor < 4; predictor++) {
-                    if (golombCodes.count(golomb_m_parameter_array[predictor])) {
-                        golombCode = golombCodes.find(golomb_m_parameter_array[predictor])->second;
-                    } else {
-                        // Create golombCode
-                        golombCode = GolombCode(golomb_m_parameter_array[predictor]);
-                        golombCodes.insert({golomb_m_parameter_array[predictor], golombCode});
-                    }
                     // Encode and append to encodedstring
-                    encoded_residuals_array[predictor] += encodeResidual(golombCode, wavQuant, residuals[predictor]);
+                    encoded_residuals_array[predictor] += encodeResidual(currentGolombCodes[predictor], wavQuant, residuals[predictor]);
                     sumSamples_array[predictor] += abs(residuals[predictor]);
-                    // Otimize m parameter for next sample
-                    golomb_m_parameter_array[predictor] = optimizeGolombParameter(sumSamples_array[predictor], numSamples);
                 }
             }
             
             if (predictor_type != 4) {
-                //cout << "golomb_m:  " << golomb_m_parameter_array[predictor_type] << endl;
-                if (golombCodes.count(golomb_m_parameter_array[predictor_type])) {
-                    golombCode = golombCodes.find(golomb_m_parameter_array[predictor_type])->second;
-                } else {
-                    // Create golombCode
-                    golombCode = GolombCode(golomb_m_parameter_array[predictor_type]);
-                    golombCodes.insert({golomb_m_parameter_array[predictor_type], golombCode});
-                }
                 // Encode and write
-                string encoded_residual = encodeResidual(golombCode, wavQuant, residual);
+                string encoded_residual = encodeResidual(currentGolombCodes[predictor_type], wavQuant, residual);
                 bitStream.write_n_bits(encoded_residual);
                 sumSamples_array[predictor_type] += abs(residual);
-                // Otimize m parameter for next sample
-                golomb_m_parameter_array[predictor_type] = optimizeGolombParameter(sumSamples_array[predictor_type], numSamples);
             }
 
-            last_residuals[2] = last_residuals[1];      // index - 3
-            last_residuals[1] = last_residuals[0];      // index - 2
-            last_residuals[0] = samples[index];         // index - 1   
+            lastSamples[2] = lastSamples[1];      // index - 3
+            lastSamples[1] = lastSamples[0];      // index - 2
+            lastSamples[0] = samples[index];         // index - 1   
+
+            if (numSamples % window_size == 0) {
+                // Update golombCodes
+                for (int predictor = 0; predictor < 4; predictor++) {
+                    golomb_m_parameter_array[predictor] = optimizeGolombParameter(sumSamples_array[predictor], window_size);
+                    if (golombCodes.count(golomb_m_parameter_array[predictor])) {
+                        currentGolombCodes[predictor] = golombCodes.find(golomb_m_parameter_array[predictor])->second;
+                    } else {
+                        // Create golombCode
+                        currentGolombCodes[predictor] = GolombCode(golomb_m_parameter_array[predictor]);
+                        golombCodes.insert({golomb_m_parameter_array[predictor], currentGolombCodes[predictor]});
+                    }
+                    sumSamples_array[predictor] = 0;
+                }
+            }
         }
+        
 
         if (predictor_type == 4) {
-
             unsigned int smallestSize = encoded_residuals_array[0].length();
             int bestPredictor = 0;
             for (int i = 1; i<4; i++) {
-
                 if ( encoded_residuals_array[i].length() < smallestSize) {
                     smallestSize = encoded_residuals_array[i].length();
                     bestPredictor = i;
@@ -287,13 +283,13 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
 int main(int argc,const char** argv) {
 
     int predictor_type = 0;
-    int golomb_m_parameter = 6;
     int quantize_bits = 0;
+    int window_size = 50;
 
     if(argc < 3) {
 		cerr << "Usage: ./audio_codec [ -p predictor (def 0) ]\n";
 		cerr << "                      input_file output_file\n";
-		cerr << "Example: ./audio_codec -p 0 sample.wav compressed.wav\n";
+		cerr << "Example: ./audio_codec -p 0 -w 10 sample.wav compressed.wav\n";
 		return 1;
 	}
 
@@ -327,16 +323,16 @@ int main(int argc,const char** argv) {
                 return 1;
             }
 		}
-		else if(string(argv[n]) == "-m") {
+		else if(string(argv[n]) == "-w") {
             try {
-			    golomb_m_parameter = atoi(argv[n+1]);
+			    window_size = atoi(argv[n+1]);
 
-                if(golomb_m_parameter < 1) {
-                    cerr << "Error: invalid m parameter requested\n";
+                if(window_size < 1) {
+                    cerr << "Error: invalid window size parameter requested\n";
                     return 1;
                 }
             } catch (invalid_argument const&) {	
-                cerr << "Error: invalid m parameter requested\n";
+                cerr << "Error: invalid window size parameter requested\n";
                 return 1;
             }
 		}
@@ -358,7 +354,6 @@ int main(int argc,const char** argv) {
     }
 
     WAVQuant* wavQuant = nullptr;
-    //GolombCode golombCode {golomb_m_parameter};
     BitStream bitStream { argv[argc-1], "w" };
 
     if (quantize_bits > 0){
@@ -366,33 +361,23 @@ int main(int argc,const char** argv) {
     }
     
     // Write golomb_m_parameter to coded file
-	//bitStream.write_n_bits(std::bitset<32>(golomb_m_parameter).to_string());
     // Write wavFileInput format to coded file
-    //string encoded_wavFileInputFormat = golombCode.encode(sndFile.format());
-    //bitStream.write_n_bits(encoded_wavFileInputFormat);
     bitStream.write_n_bits(std::bitset<32>(sndFile.format()).to_string());
 	// Write wavFileInput channels to coded file
-    // string encoded_wavFileInputChannels = golombCode.encode(sndFile.channels());
-    // bitStream.write_n_bits(encoded_wavFileInputChannels);
     bitStream.write_n_bits(std::bitset<32>(sndFile.channels()).to_string());
 	// Write wavFileInput frames to coded file
-    // string encoded_wavFileInputFrames = golombCode.encode(sndFile.frames());
-    // bitStream.write_n_bits(encoded_wavFileInputFrames);
     bitStream.write_n_bits(std::bitset<32>(sndFile.frames()).to_string());
 	// Write wavFileInput sampleRate to coded file
-    // string encoded_wavFileInputSampleRate = golombCode.encode(sndFile.samplerate());
-    // bitStream.write_n_bits(encoded_wavFileInputSampleRate);
     bitStream.write_n_bits(std::bitset<32>(sndFile.samplerate()).to_string());
     // Write block size to coded file
-    // string encoded_bufferSize = golombCode.encode(FRAMES_BUFFER_SIZE);
-    // bitStream.write_n_bits(encoded_bufferSize);
     bitStream.write_n_bits(std::bitset<32>(FRAMES_BUFFER_SIZE).to_string());
     // Write predictor_type to coded file
-    // string encoded_predictor_type = golombCode.encode(predictor_type);
-    // bitStream.write_n_bits(encoded_predictor_type);
     bitStream.write_n_bits(std::bitset<32>(predictor_type).to_string());
+    // Write window_size to coded file
+    bitStream.write_n_bits(std::bitset<32>(window_size).to_string());
+    
 
-    if (sndFile.channels() == 1) encodeMonoAudio(sndFile, predictor_type, bitStream, wavQuant);
+    if (sndFile.channels() == 1) encodeMonoAudio(sndFile, predictor_type, bitStream, wavQuant, window_size);
     else if (sndFile.channels() == 2) encodeStereoAudio(sndFile, predictor_type, bitStream, wavQuant);
 
     bitStream.close();
