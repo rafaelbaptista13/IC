@@ -351,7 +351,6 @@ int main(int argc,const char** argv) {
         wavQuant = new WAVQuant(quantize_bits, 1);
     }
     
-    // Write golomb_m_parameter to coded file
     // Write wavFileInput format to coded file
     bitStream.write_n_bits(std::bitset<32>(sndFile.format()).to_string());
 	// Write wavFileInput channels to coded file
