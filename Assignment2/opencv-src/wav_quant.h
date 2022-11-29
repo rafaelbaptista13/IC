@@ -56,7 +56,7 @@ class WAVQuant {
                 if (i >= 0 && codeMap.count(currentThreshold)){
                     codeMap[currentThreshold] = codeCounter;
                     inverseCodeMap[codeCounter] = currentThreshold;
-                    code_counter++;
+                    codeCounter++;
                 }
 
                 counter++;
