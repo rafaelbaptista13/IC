@@ -26,19 +26,28 @@ void decodeImage(Mat& image, int rows, int cols, int predictor_type, BitStream &
 
     Vec3b residual;
     int selectedPredictor = predictor_type;
-    if (predictor_type == 0) {
-        selectedPredictor =  binaryToInt[bitStreamRead.get_n_bits(3)];
-    }
-    std::cout << "Selected Predictor: " << selectedPredictor << std::endl;
-    std::cout << "Window size: " << window_size << std::endl;
 
     GolombCode golombCode {golomb_m_parameter};
     map<int, GolombCode> golombCodes = {{16, golombCode}};
 
     for(int i=0; i<rows; i++) {
+
         for (int j=0; j<cols; j++) {
-            
             num_pixels++;
+
+            if (predictor_type == 0 && num_pixels % 2000 == 1) {
+                selectedPredictor = binaryToInt[bitStreamRead.get_n_bits(3)];
+                golomb_m_parameter = (int32_t) std::bitset<32>(bitStreamRead.get_n_bits(32)).to_ulong();
+                if (golombCodes.count(golomb_m_parameter)) {
+                    golombCode = golombCodes.find(golomb_m_parameter)->second;
+                } else {
+                    // Create golombCode
+                    golombCode =  GolombCode(golomb_m_parameter);
+                    golombCodes.insert({golomb_m_parameter, golombCode});
+                }
+                sumResiduals = (int32_t) std::bitset<32>(bitStreamRead.get_n_bits(32)).to_ulong();
+            }   
+
             int residual_r = golombCode.decodeWithBitstream(bitStreamRead);
             int residual_g = golombCode.decodeWithBitstream(bitStreamRead);
             int residual_b = golombCode.decodeWithBitstream(bitStreamRead);
@@ -46,7 +55,7 @@ void decodeImage(Mat& image, int rows, int cols, int predictor_type, BitStream &
             sumResiduals += abs(residual_g);
             sumResiduals += abs(residual_b);
             residual = Vec3b(residual_r, residual_g, residual_b);
-            
+
             if (selectedPredictor == 1) {
                 image.at<Vec3b>(i, j)[0] = residual[0] + a[0];
                 image.at<Vec3b>(i, j)[1] = residual[1] + a[1];
@@ -84,12 +93,11 @@ void decodeImage(Mat& image, int rows, int cols, int predictor_type, BitStream &
                 b = image.at<Vec3b>(i-1, j+1);
                 c = image.at<Vec3b>(i-1, j);
             }
-
             if (num_pixels % window_size == 0) {
                 double mean = (double) sumResiduals/ (double) window_size;
                 alfa = mean / (mean + 1);
                 golomb_m_parameter = ceil( -1/log2(alfa) );
-                if (golomb_m_parameter == 0) continue;
+                if (golomb_m_parameter == 0) golomb_m_parameter = 1;
                 if (golombCodes.count(golomb_m_parameter)) {
                     golombCode = golombCodes.find(golomb_m_parameter)->second;
                 } else {
@@ -103,6 +111,7 @@ void decodeImage(Mat& image, int rows, int cols, int predictor_type, BitStream &
         a = Vec3b(0,0,0);
         b = image.at<Vec3b>(i, 0);
         c = Vec3b(0,0,0);
+
     }
 
 }
