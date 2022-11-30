@@ -65,7 +65,6 @@ class GolombCode {
         
         }
 
-
 	}
 
     /*
@@ -151,14 +150,12 @@ class GolombCode {
         while (bitStream.get_bit() != 1) {
             q++;
         }
-
         // Decode truncated binary code
         int size_of_rest = floor(log2(m));
         std::string rest_code = bitStream.get_n_bits(size_of_rest);
         if (std::find(truncated_binary_codes.begin(), truncated_binary_codes.end(), rest_code ) == truncated_binary_codes.end()) {
             rest_code += std::to_string(bitStream.get_bit());
         }
-
         std::vector<std::string>::iterator itr = std::find(truncated_binary_codes.begin(), truncated_binary_codes.end(), rest_code);
         int r = std::distance(truncated_binary_codes.begin(), itr);
 

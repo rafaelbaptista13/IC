@@ -34,7 +34,6 @@ void encodeImage(Mat originalImg, int predictor_type, BitStream &bitStream, int 
        
     for(int i=0; i<originalImg.rows; i++) {
         for (int j=0; j<originalImg.cols; j++) {
-
             num_pixels++;
             int current_pixel[3] = {originalImg.at<Vec3b>(i, j)[0], originalImg.at<Vec3b>(i, j)[1], originalImg.at<Vec3b>(i, j)[2]};
 
@@ -70,6 +69,12 @@ void encodeImage(Mat originalImg, int predictor_type, BitStream &bitStream, int 
                 // Choose the best predictor
 
                 // predictor 1
+                if (num_pixels % 2000 == 1) {
+                    for (int i= 0; i < 7; i++) {
+                        encoded_residuals_array[i] += std::bitset<32>(golomb_m_parameter_array[i]).to_string();
+                        encoded_residuals_array[i] += std::bitset<32>(sumResiduals_array[i]).to_string();
+                    }
+                }
                 residual[0] = current_pixel[0] - a[0];
                 residual[1] = current_pixel[1] - a[1];
                 residual[2] = current_pixel[2] - a[2];
@@ -79,7 +84,7 @@ void encodeImage(Mat originalImg, int predictor_type, BitStream &bitStream, int 
                 sumResiduals_array[0] += abs(residual[0]);
                 sumResiduals_array[0] += abs(residual[1]);
                 sumResiduals_array[0] += abs(residual[2]);
-
+                
                 // predictor 2
                 residual[0] = current_pixel[0] - b[0];
                 residual[1] = current_pixel[1] - b[1];
@@ -121,8 +126,9 @@ void encodeImage(Mat originalImg, int predictor_type, BitStream &bitStream, int 
                 encoded_residuals_array[4] += currentGolombCodes[4].encode(residual[1]); 
                 encoded_residuals_array[4] += currentGolombCodes[4].encode(residual[2]); 
                 sumResiduals_array[4] += abs(residual[0]);
-                sumResiduals_array[4] += abs(residual[1]);
+                sumResiduals_array[4] += abs(residual[1]); 
                 sumResiduals_array[4] += abs(residual[2]);
+                
 
                 // predictor 6
                 residual[0] = current_pixel[0] - (b[0] + ((a[0] - c[0])/2));
@@ -145,6 +151,7 @@ void encodeImage(Mat originalImg, int predictor_type, BitStream &bitStream, int 
                 sumResiduals_array[6] += abs(residual[0]);
                 sumResiduals_array[6] += abs(residual[1]);
                 sumResiduals_array[6] += abs(residual[2]);
+            
             }
 
             if (predictor_type != 0) {
@@ -168,12 +175,12 @@ void encodeImage(Mat originalImg, int predictor_type, BitStream &bitStream, int 
                 b = originalImg.at<Vec3b>(i-1, j+1);
                 c = originalImg.at<Vec3b>(i-1, j);
             }
-            
+
             if (num_pixels % window_size == 0) {
                 // Update golombCodes
                 for (int predictor = 0; predictor < 7; predictor++) {
                     golomb_m_parameter_array[predictor] = optimizeGolombParameter(sumResiduals_array[predictor], window_size);
-                    if (golomb_m_parameter_array[predictor] == 0) continue;
+                    if (golomb_m_parameter_array[predictor] == 0) golomb_m_parameter_array[predictor] = 1;
                     if (golombCodes.count(golomb_m_parameter_array[predictor])) {
                         currentGolombCodes[predictor] = golombCodes.find(golomb_m_parameter_array[predictor])->second;
                     } else {
@@ -184,12 +191,35 @@ void encodeImage(Mat originalImg, int predictor_type, BitStream &bitStream, int 
                     sumResiduals_array[predictor] = 0;
                 }
             }
+
+            if (predictor_type == 0 && num_pixels % 2000 == 0) {
+                // Calculate the best predictor
+                unsigned int smallestSize = encoded_residuals_array[0].length();
+                int bestPredictor = 1;
+                for (int i = 1; i<7; i++) {
+                    if ( encoded_residuals_array[i].length() < smallestSize) {
+                        smallestSize = encoded_residuals_array[i].length();
+                        bestPredictor = i + 1;
+                    }
+                }
+                bitStream.write_n_bits(std::bitset<32>(bestPredictor).to_string().substr(29, 32));
+                bitStream.write_n_bits(encoded_residuals_array[bestPredictor-1]);
+
+                encoded_residuals_array[0] = "";
+                encoded_residuals_array[1] = "";
+                encoded_residuals_array[2] = "";
+                encoded_residuals_array[3] = "";
+                encoded_residuals_array[4] = "";
+                encoded_residuals_array[5] = "";
+                encoded_residuals_array[6] = "";
+            }
+
         }
         a = Vec3b(0,0,0);
         b = originalImg.at<Vec3b>(i, 0);
         c = Vec3b(0,0,0);
     }
-    
+
     if (predictor_type == 0) {
         // Calculate the best predictor
         unsigned int smallestSize = encoded_residuals_array[0].length();
@@ -203,7 +233,7 @@ void encodeImage(Mat originalImg, int predictor_type, BitStream &bitStream, int 
         bitStream.write_n_bits(std::bitset<32>(bestPredictor).to_string().substr(29, 32));
         bitStream.write_n_bits(encoded_residuals_array[bestPredictor-1]);
     }
-
+    
 }
 
 int main(int argc,const char** argv) {
