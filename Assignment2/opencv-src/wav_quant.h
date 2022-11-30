@@ -53,7 +53,7 @@ class WAVQuant {
                 }
                 approximationMap[i] = currentThreshold;
 
-                if (i >= 0 && codeMap.count(currentThreshold)){
+                if (i > 0 && !codeMap.count(currentThreshold)){
                     codeMap[currentThreshold] = codeCounter;
                     inverseCodeMap[codeCounter] = currentThreshold;
                     codeCounter++;
@@ -71,7 +71,7 @@ class WAVQuant {
         for (auto it = samples.begin(); it != samples.end(); ++it) {
             int index = std::distance(samples.begin(), it);
 
-            samples[index] = quantize(samples[index]);
+            samples[index] = quantize_value(samples[index]);
         }
         return samples;
 	}
@@ -80,12 +80,20 @@ class WAVQuant {
         return approximationMap[sample];
     }
 
-    short quantize(const short sample){
-        return codeMap[abs(quantize_value(sample))] * (sample / sample); // to preserve sign
+    short quantizeAndEncode(const short sample){
+        int result = codeMap[std::abs(quantize_value(sample))];
+        if (sample < 0)
+            return -result;
+        else
+            return result;
     }
 
-    short unquantize(const short encodedSample){
-        return inverseCodeMap[abs(encodedSample)] * (encodedSample / encodedSample); // to preserve sign
+    short decodeQuantized(const short encodedSample){
+        int result = inverseCodeMap[std::abs(encodedSample)];
+        if (encodedSample < 0)
+            return -result;
+        else
+            return result;
     }
 };
 

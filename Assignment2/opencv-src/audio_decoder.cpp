@@ -3,13 +3,14 @@
 #include "GolombCode.h"
 #include "BitStream.h"
 #include "map"
+#include "wav_quant.h"
 
 using namespace std;
 
 constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
 map<string, int> binaryToInt = {{"00", 0}, {"01", 1}, {"10", 2}, {"11", 3}};
 
-vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num_of_elements, BitStream &bitStream, int blockSize, int window_size) {
+vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num_of_elements, BitStream &bitStream, int blockSize, int window_size, WAVQuant* wavQuant) {
 
     int numSamples = 0;
     long int sumSamples = 0;
@@ -38,6 +39,9 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num
         for (int i=0; i < blockSize; i++) {
             // Get residual
             residual = golombCode.decodeWithBitstream(bitStream);
+
+            if (wavQuant)
+                residual = wavQuant->decodeQuantized(residual);
 
             // Convert to original
             if (selectedPredictor == 0) {
@@ -77,7 +81,7 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num
 }
 
 
-vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int num_of_elements, BitStream &bitStream, int blockSize, int window_size) {
+vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int num_of_elements, BitStream &bitStream, int blockSize, int window_size, WAVQuant* wavQuant) {
 
     int mid_sumSamples = 0;
     int side_sumSamples = 0;
@@ -220,6 +224,9 @@ int main(int argc,const char** argv) {
     // Get window size
     std::string window_size_str = bitStreamRead.get_n_bits(32);
 	int window_size = (int32_t) std::bitset<32>(window_size_str).to_ulong();
+    // Get quantize_bits
+    std::string quantize_bits_str = bitStreamRead.get_n_bits(32);
+	int quantize_bits = (int32_t) std::bitset<32>(quantize_bits_str).to_ulong();
 
     SndfileHandle sfhOut { argv[argc-1], SFM_WRITE, format,
 	  channels, sample_rate };
@@ -228,10 +235,15 @@ int main(int argc,const char** argv) {
 		return 1;
     }
 
+    WAVQuant* wavQuant = nullptr;
+    if (quantize_bits > 0){
+        wavQuant = new WAVQuant(quantize_bits, 1);
+    }
+
 	vector<short> samples(channels * frames);
 
-    if (channels == 1) samples = decodeMonoAudio(samples, predictor_type, frames * channels, bitStreamRead, blockSize * channels, window_size);
-    else if (channels == 2) samples = decodeStereoAudio(samples, predictor_type, frames * channels, bitStreamRead, blockSize * channels, window_size);
+    if (channels == 1) samples = decodeMonoAudio(samples, predictor_type, frames * channels, bitStreamRead, blockSize * channels, window_size, wavQuant);
+    else if (channels == 2) samples = decodeStereoAudio(samples, predictor_type, frames * channels, bitStreamRead, blockSize * channels, window_size, wavQuant);
 
     sfhOut.writef(samples.data(), channels * frames);
 

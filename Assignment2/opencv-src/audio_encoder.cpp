@@ -32,6 +32,7 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
     int golomb_m_parameter_array[] = {100, 100, 100, 100};       // Initial m = 100
 
     int residual = 0;
+    int predicted_value = 0;
     string encoded_residuals_array[] = {"", "", "", ""};
     int lastSamples[] = {0, 0, 0};
     GolombCode golombCode {100};
@@ -71,12 +72,31 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
                 // Encode and write
                 string encoded_residual = encodeResidual(currentGolombCodes[predictor_type], wavQuant, residual);
                 bitStream.write_n_bits(encoded_residual);
-                sumSamples_array[predictor_type] += abs(residual);
+                if (!wavQuant)
+                    sumSamples_array[predictor_type] += abs(residual);
+                else
+                    sumSamples_array[predictor_type] += abs(wavQuant->quantize_value(residual));
             }
+
+            if (wavQuant){
+                if (predictor_type == 0) {
+                    predicted_value = wavQuant->quantize_value(residual);
+                } else if (predictor_type == 1) {
+                    predicted_value = lastSamples[0] + wavQuant->quantize_value(residual);
+                } else if (predictor_type == 2) {
+                    predicted_value = wavQuant->quantize_value(residual) + (2*lastSamples[0]) + lastSamples[1];
+                } else if (predictor_type == 3){
+                    predicted_value = wavQuant->quantize_value(residual) + 3 * lastSamples[0] + 3 * lastSamples[1] - lastSamples[2];
+                }
+            }
+
 
             lastSamples[2] = lastSamples[1];      // index - 3
             lastSamples[1] = lastSamples[0];      // index - 2
-            lastSamples[0] = samples[index];         // index - 1   
+            if (!wavQuant)                        // index - 1
+                lastSamples[0] = samples[index];
+            else
+                lastSamples[0] = predicted_value;
 
             if (numSamples % window_size == 0) {
                 // Update golombCodes
@@ -365,6 +385,8 @@ int main(int argc,const char** argv) {
     bitStream.write_n_bits(std::bitset<32>(predictor_type).to_string());
     // Write window_size to coded file
     bitStream.write_n_bits(std::bitset<32>(window_size).to_string());
+    // Write quantize_bits to coded file
+    bitStream.write_n_bits(std::bitset<32>(quantize_bits).to_string());
     
 
     if (sndFile.channels() == 1) encodeMonoAudio(sndFile, predictor_type, bitStream, wavQuant, window_size);
