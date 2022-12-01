@@ -483,8 +483,11 @@ int main(int argc,const char** argv) {
                 return 1;
             }
         }
+    }
 
-
+    if(predictor_type == 4 && quantize_bits != 0){
+        cerr << "Error: invalid p parameter requested - can't quantize with predictor type 4\n";
+        return 1;
     }
 
     WAVQuant* wavQuant = nullptr;
