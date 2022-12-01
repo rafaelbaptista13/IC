@@ -35,6 +35,10 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
     int residual = 0;
     int predicted_value = 0;
     string encoded_residuals_array[] = {"", "", "", ""};
+    for (int predictor = 0; predictor < 4; predictor++) {
+        encoded_residuals_array[predictor] += std::bitset<32>(golomb_m_parameter_array[predictor]).to_string();
+        encoded_residuals_array[predictor] += std::bitset<32>(sumSamples_array[predictor]).to_string();
+    }
     int lastSamples[] = {0, 0, 0};
     GolombCode golombCode {100};
     GolombCode currentGolombCodes[] = {golombCode, golombCode, golombCode, golombCode};
@@ -61,12 +65,6 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
                                     samples[index] - lastSamples[0],
                                     samples[index] - (2 * lastSamples[0] - lastSamples[1]),
                                     samples[index] - (3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2])};
-                if (index == 0) {
-                    for (int predictor = 0; predictor < 4; predictor++) {
-                        encoded_residuals_array[predictor] += std::bitset<32>(golomb_m_parameter_array[predictor]).to_string();
-                        encoded_residuals_array[predictor] += std::bitset<32>(sumSamples_array[predictor]).to_string();
-                    }
-                }
                 for (int predictor = 0; predictor < 4; predictor++) {
                     // Encode and append to encodedstring
                     encoded_residuals_array[predictor] += encodeResidual(currentGolombCodes[predictor], wavQuant, residuals[predictor]);
@@ -134,10 +132,10 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
             bitStream.write_n_bits(std::bitset<32>(bestPredictor).to_string().substr(30, 32));
             bitStream.write_n_bits(encoded_residuals_array[bestPredictor]);
 
-            encoded_residuals_array[0] = "";
-            encoded_residuals_array[1] = "";
-            encoded_residuals_array[2] = "";
-            encoded_residuals_array[3] = "";
+            for (int predictor = 0; predictor < 4; predictor++) {
+                encoded_residuals_array[predictor] = std::bitset<32>(golomb_m_parameter_array[predictor]).to_string();
+                encoded_residuals_array[predictor] += std::bitset<32>(sumSamples_array[predictor]).to_string();
+            }
         }
     }
 }
@@ -166,6 +164,12 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
     int sideChannelResidual = 0;
 
     string encoded_residuals_array[] = {"", "", "", ""};
+    for (int predictor=0; predictor<4; predictor++) {
+        encoded_residuals_array[predictor] = std::bitset<32>(side_golomb_m_parameter_array[predictor]).to_string();
+        encoded_residuals_array[predictor] += std::bitset<32>(side_sumSamples_array[predictor]).to_string();
+        encoded_residuals_array[predictor] += std::bitset<32>(mid_golomb_m_parameter_array[predictor]).to_string();
+        encoded_residuals_array[predictor] += std::bitset<32>(mid_sumSamples_array[predictor]).to_string();
+    }
 
     GolombCode golombCode {100};
     GolombCode currentSideGolombCodes[] = {golombCode, golombCode, golombCode, golombCode};
@@ -209,7 +213,7 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
                                                 diffValue - lastDiffValues[0],
                                                 diffValue - (2 * lastDiffValues[0]) - lastDiffValues[1],
                                                 diffValue - (3 * lastDiffValues[0]) - (3 * lastDiffValues[1]) + lastDiffValues[2]};
-
+                    
                     for (int predictor=0; predictor<4; predictor++) {
                         // Encode and append to encodedstring
                         encoded_residuals_array[predictor] += encodeResidual(currentMidGolombCodes[predictor], wavQuant, midChannelResiduals[predictor]);
@@ -287,10 +291,12 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
             bitStream.write_n_bits(std::bitset<32>(bestPredictor).to_string().substr(30, 32));
             bitStream.write_n_bits(encoded_residuals_array[bestPredictor]);
 
-            encoded_residuals_array[0] = "";
-            encoded_residuals_array[1] = "";
-            encoded_residuals_array[2] = "";
-            encoded_residuals_array[3] = "";
+            for (int predictor=0; predictor<4; predictor++) {
+                encoded_residuals_array[predictor] = std::bitset<32>(side_golomb_m_parameter_array[predictor]).to_string();
+                encoded_residuals_array[predictor] += std::bitset<32>(side_sumSamples_array[predictor]).to_string();
+                encoded_residuals_array[predictor] += std::bitset<32>(mid_golomb_m_parameter_array[predictor]).to_string();
+                encoded_residuals_array[predictor] += std::bitset<32>(mid_sumSamples_array[predictor]).to_string();
+            }
         }
     }
 

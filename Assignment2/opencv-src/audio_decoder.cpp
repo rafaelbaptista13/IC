@@ -119,8 +119,28 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
 
     while (elementsRead < num_of_elements) {
 
-        if (predictor_type == 4)
+        if (predictor_type == 4) {
             selectedPredictor = binaryToInt[bitStream.get_n_bits(2)];
+            side_golomb_m_parameter = (int32_t) std::bitset<32>(bitStream.get_n_bits(32)).to_ulong();
+            if (golombCodes.count(side_golomb_m_parameter)) {
+                side_golombCode = golombCodes.find(side_golomb_m_parameter)->second;
+            } else {
+                // Create golombCode
+                side_golombCode =  GolombCode(side_golomb_m_parameter);
+                golombCodes.insert({side_golomb_m_parameter, side_golombCode});
+            }
+            side_sumSamples = (int32_t) std::bitset<32>(bitStream.get_n_bits(32)).to_ulong();
+
+            mid_golomb_m_parameter = (int32_t) std::bitset<32>(bitStream.get_n_bits(32)).to_ulong();
+            if (golombCodes.count(mid_golomb_m_parameter)) {
+                mid_golombCode = golombCodes.find(mid_golomb_m_parameter)->second;
+            } else {
+                // Create golombCode
+                mid_golombCode =  GolombCode(mid_golomb_m_parameter);
+                golombCodes.insert({mid_golomb_m_parameter, mid_golombCode});
+            }
+            mid_sumSamples = (int32_t) std::bitset<32>(bitStream.get_n_bits(32)).to_ulong();
+        }
         else
             selectedPredictor = predictor_type;
 
