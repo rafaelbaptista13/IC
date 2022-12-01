@@ -156,7 +156,9 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
 
     int lastSample = 0;
     int meanValue;
+    int predictedMeanValue;
     int lastMeanValues[] = {0,0,0};
+    int predictedDiffValue;
     int diffValue;
     int lastDiffValues[] = {0,0,0};
     
@@ -198,21 +200,21 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
                     midChannelResidual = meanValue - lastMeanValues[0];
                     sideChannelResidual = diffValue - lastDiffValues[0];
                 } else if (predictor_type == 2) {
-                    midChannelResidual = meanValue -  (2 * lastMeanValues[0]) - lastMeanValues[1];
-                    sideChannelResidual = diffValue - (2 * lastDiffValues[0]) - lastDiffValues[1];
+                    midChannelResidual = meanValue -  (2 * lastMeanValues[0] - lastMeanValues[1]);
+                    sideChannelResidual = diffValue - (2 * lastDiffValues[0] - lastDiffValues[1]);
                 } else if (predictor_type == 3) {
-                    midChannelResidual = meanValue - (3 * lastMeanValues[0]) - (3 * lastMeanValues[1]) + lastMeanValues[2];
-                    sideChannelResidual = diffValue - (3 * lastDiffValues[0]) - (3 * lastDiffValues[1]) + lastDiffValues[2];
+                    midChannelResidual = meanValue - (3 * lastMeanValues[0] - 3 * lastMeanValues[1] + lastMeanValues[2]);
+                    sideChannelResidual = diffValue - (3 * lastDiffValues[0] - 3 * lastDiffValues[1] + lastDiffValues[2]);
                 } else if (predictor_type == 4) {
                     
                     int midChannelResiduals[4] = {meanValue, 
                                                 meanValue - lastMeanValues[0], 
-                                                meanValue -  (2 * lastMeanValues[0]) - lastMeanValues[1], 
-                                                meanValue - (3 * lastMeanValues[0]) - (3 * lastMeanValues[1]) + lastMeanValues[2]};
+                                                meanValue -  (2 * lastMeanValues[0] - lastMeanValues[1]),
+                                                meanValue - (3 * lastMeanValues[0] - (3 * lastMeanValues[1]) + lastMeanValues[2])};
                     int sideChannelResiduals[4] = {diffValue,
                                                 diffValue - lastDiffValues[0],
-                                                diffValue - (2 * lastDiffValues[0]) - lastDiffValues[1],
-                                                diffValue - (3 * lastDiffValues[0]) - (3 * lastDiffValues[1]) + lastDiffValues[2]};
+                                                diffValue - (2 * lastDiffValues[0] - lastDiffValues[1]),
+                                                diffValue - (3 * lastDiffValues[0] - (3 * lastDiffValues[1]) + lastDiffValues[2])};
                     
                     for (int predictor=0; predictor<4; predictor++) {
                         // Encode and append to encodedstring
@@ -230,20 +232,53 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
                     // Encode and write
                     string mid_encoded_residual = encodeResidual(currentMidGolombCodes[predictor_type], wavQuant, midChannelResidual);
                     bitStream.write_n_bits(mid_encoded_residual);
-                    mid_sumSamples_array[predictor_type] += abs(midChannelResidual);
+                    if(!wavQuant)
+                        mid_sumSamples_array[predictor_type] += abs(midChannelResidual);
+                    else
+                        mid_sumSamples_array[predictor_type] += abs(wavQuant->quantize_value(midChannelResidual));
 
                     // Encode and write
                     string side_encoded_residual = encodeResidual(currentSideGolombCodes[predictor_type], wavQuant, sideChannelResidual);
                     bitStream.write_n_bits(side_encoded_residual);
-                    side_sumSamples_array[predictor_type] += abs(sideChannelResidual);
+                    if(!wavQuant)
+                        side_sumSamples_array[predictor_type] += abs(sideChannelResidual);
+                    else
+                        side_sumSamples_array[predictor_type] += abs(wavQuant->quantize_value(sideChannelResidual));
+                }
+
+                if (wavQuant){
+                    if (predictor_type == 0) {
+                        predictedMeanValue = wavQuant->quantize_value(midChannelResidual);
+                        predictedDiffValue = wavQuant->quantize_value(sideChannelResidual);
+                    } else if (predictor_type == 1) {
+                        predictedMeanValue = lastMeanValues[0] + wavQuant->quantize_value(midChannelResidual);
+                        predictedDiffValue = lastDiffValues[0] + wavQuant->quantize_value(sideChannelResidual);
+                    } else if (predictor_type == 2) {
+                        predictedMeanValue = wavQuant->quantize_value(midChannelResidual) + (2*lastMeanValues[0]) - lastMeanValues[1];
+                        predictedDiffValue = wavQuant->quantize_value(sideChannelResidual) + (2*lastDiffValues[0]) - lastDiffValues[1];
+                    } else if (predictor_type == 3){
+                        predictedMeanValue = wavQuant->quantize_value(midChannelResidual) + 3 * lastMeanValues[0] - 3 * lastMeanValues[1] + lastMeanValues[2];
+                        predictedDiffValue = wavQuant->quantize_value(sideChannelResidual) + 3 * lastDiffValues[0] - 3 * lastDiffValues[1] + lastDiffValues[2];
+                    }
+
+                    if (predictedDiffValue % 2 == 1) {
+                        predictedMeanValue += 0.5;
+                    }
                 }
 
                 lastMeanValues[2] = lastMeanValues[1];
                 lastMeanValues[1] = lastMeanValues[0];
-                lastMeanValues[0] = meanValue;
+                if(!wavQuant)
+                    lastMeanValues[0] = meanValue;
+                else
+                    lastMeanValues[0] = predictedMeanValue;
+
                 lastDiffValues[2] = lastDiffValues[1];
                 lastDiffValues[1] = lastDiffValues[0];
-                lastDiffValues[0] = diffValue;
+                if(!wavQuant)
+                    lastDiffValues[0] = diffValue;
+                else
+                    lastDiffValues[0] = predictedDiffValue;
 
                 if (numSamples % window_size == 0) {
                     // Update golombCodes

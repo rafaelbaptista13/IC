@@ -154,6 +154,13 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
             mid_residual = mid_golombCode.decodeWithBitstream(bitStream);
             side_residual = side_golombCode.decodeWithBitstream(bitStream);
 
+            if(wavQuant){
+                mid_residual = wavQuant->decodeQuantized(mid_residual);
+                side_residual = wavQuant->decodeQuantized(side_residual);
+            }
+
+
+
             if (selectedPredictor == 0) {
                 mid_val = mid_residual;
                 side_val = side_residual;
@@ -161,11 +168,11 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
                 mid_val = mid_residual + lastMeanValues[0];
                 side_val = side_residual + lastDiffValues[0];
             } else if (selectedPredictor == 2) {
-                mid_val = mid_residual + (2 * lastMeanValues[0]) + lastMeanValues[1];
-                side_val = side_residual + (2 * lastDiffValues[0]) + lastDiffValues[1];
+                mid_val = mid_residual + (2 * lastMeanValues[0]) - lastMeanValues[1];
+                side_val = side_residual + (2 * lastDiffValues[0]) - lastDiffValues[1];
             } else {
-                mid_val = mid_residual + (3 * lastMeanValues[0]) + (3 * lastMeanValues[1]) - lastMeanValues[2];
-                side_val = side_residual + (3 * lastDiffValues[0]) + (3 * lastDiffValues[1]) - lastDiffValues[2];
+                mid_val = mid_residual + (3 * lastMeanValues[0]) - (3 * lastMeanValues[1]) + lastMeanValues[2];
+                side_val = side_residual + (3 * lastDiffValues[0]) - (3 * lastDiffValues[1]) + lastDiffValues[2];
             }
 
             if (side_val % 2 == 1) {
