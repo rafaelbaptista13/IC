@@ -27,8 +27,18 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num
 
     while (numSamples < num_of_elements) {
 
-        if (predictor_type == 4)
+        if (predictor_type == 4) {
             selectedPredictor = binaryToInt[bitStream.get_n_bits(2)];
+            golomb_m_parameter = (int32_t) std::bitset<32>(bitStream.get_n_bits(32)).to_ulong();
+            if (golombCodes.count(golomb_m_parameter)) {
+                golombCode = golombCodes.find(golomb_m_parameter)->second;
+            } else {
+                // Create golombCode
+                golombCode =  GolombCode(golomb_m_parameter);
+                golombCodes.insert({golomb_m_parameter, golombCode});
+            }
+            sumSamples = (int32_t) std::bitset<32>(bitStream.get_n_bits(32)).to_ulong();
+        }
         else
             selectedPredictor = predictor_type;
 

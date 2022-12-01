@@ -67,14 +67,14 @@ void encodeImage(Mat originalImg, int predictor_type, BitStream &bitStream, int 
                 residual[2] = current_pixel[2] - ((a[2] + b[2])/ 2);
             } else {
                 // Choose the best predictor
-
-                // predictor 1
                 if (num_pixels % 2000 == 1) {
                     for (int i= 0; i < 7; i++) {
                         encoded_residuals_array[i] += std::bitset<32>(golomb_m_parameter_array[i]).to_string();
                         encoded_residuals_array[i] += std::bitset<32>(sumResiduals_array[i]).to_string();
                     }
                 }
+
+                // predictor 1
                 residual[0] = current_pixel[0] - a[0];
                 residual[1] = current_pixel[1] - a[1];
                 residual[2] = current_pixel[2] - a[2];
@@ -129,7 +129,6 @@ void encodeImage(Mat originalImg, int predictor_type, BitStream &bitStream, int 
                 sumResiduals_array[4] += abs(residual[1]); 
                 sumResiduals_array[4] += abs(residual[2]);
                 
-
                 // predictor 6
                 residual[0] = current_pixel[0] - (b[0] + ((a[0] - c[0])/2));
                 residual[1] = current_pixel[1] - (b[1] + ((a[1] - c[1])/2));

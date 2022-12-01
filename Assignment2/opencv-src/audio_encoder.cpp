@@ -61,7 +61,12 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
                                     samples[index] - lastSamples[0],
                                     samples[index] - (2 * lastSamples[0] - lastSamples[1]),
                                     samples[index] - (3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2])};
-
+                if (index == 0) {
+                    for (int predictor = 0; predictor < 4; predictor++) {
+                        encoded_residuals_array[predictor] += std::bitset<32>(golomb_m_parameter_array[predictor]).to_string();
+                        encoded_residuals_array[predictor] += std::bitset<32>(sumSamples_array[predictor]).to_string();
+                    }
+                }
                 for (int predictor = 0; predictor < 4; predictor++) {
                     // Encode and append to encodedstring
                     encoded_residuals_array[predictor] += encodeResidual(currentGolombCodes[predictor], wavQuant, residuals[predictor]);
