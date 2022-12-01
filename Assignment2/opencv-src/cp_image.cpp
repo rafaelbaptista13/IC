@@ -122,9 +122,10 @@ int main(int argc,const char** argv) {
     float intensity_factor { 2 };
 
     if (argc < 4 ) {
-        cerr << "./cp_image [-r degree (def 90)]\n";
-        cerr << "           [-i intensity_factor (def 2)]\n";
-        cerr << "           <mode> <original_img> <output_img>\n";
+        cerr << "Usage: ./cp_image [-r degree (def 90)]\n";
+        cerr << "                  [-i intensity_factor (def 2)]\n";
+        cerr << "                  <mode> <original_img> <output_img>\n";
+        cerr << "Example: ./cp_image COPY ../pics-examples/airplane.ppm out.ppm\n";
         return 1;
     }
 

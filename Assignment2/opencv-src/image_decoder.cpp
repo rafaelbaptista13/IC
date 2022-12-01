@@ -120,7 +120,7 @@ int main(int argc,const char** argv) {
 
     if(argc < 3) {
 		cerr << "Usage: ./image_decoder input_file output_file\n";
-		cerr << "Example: ./image_decoder coded.bin output.ppm\n";
+		cerr << "Example: ./image_decoder compressed.bin output.ppm\n";
 		return 1;
 	}
 

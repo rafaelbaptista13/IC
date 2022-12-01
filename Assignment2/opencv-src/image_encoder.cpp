@@ -244,7 +244,7 @@ int main(int argc,const char** argv) {
 		cerr << "Usage: ./image_encoder [ -p predictor (def 0) ]\n";
         cerr << "                       [ -w window size (def 50) ]\n";
 		cerr << "                      input_file output_file\n";
-		cerr << "Example: ./image_encoder -p 0 -w 10 airplane.ppm compressed.bin\n";
+		cerr << "Example: ./image_encoder -p 0 -w 10 ../pics-examples/airplane.ppm compressed.bin\n";
 		return 1;
 	}
 

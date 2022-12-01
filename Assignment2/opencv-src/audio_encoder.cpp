@@ -314,7 +314,7 @@ int main(int argc,const char** argv) {
 		cerr << "                       [ -w window size (def 50) ]\n";
         cerr << "                       [ -q num_bits ]\n";
         cerr << "                      input_file output_file\n";
-		cerr << "Example: ./audio_encoder -p 0 -w 10 sample.wav compressed.bin\n";
+		cerr << "Example: ./audio_encoder -p 0 -w 10 ../audio-examples/sample01.wav compressed.bin\n";
 		return 1;
 	}
 
