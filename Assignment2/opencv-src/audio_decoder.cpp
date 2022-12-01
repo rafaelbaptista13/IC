@@ -226,7 +226,7 @@ int main(int argc,const char** argv) {
 
     if(argc < 3) {
 		cerr << "Usage: ./audio_decoder input_file output_file\n";
-		cerr << "Example: ./audio_decoder compressed.wav output.wav\n";
+		cerr << "Example: ./audio_decoder compressed.bin output.wav\n";
 		return 1;
 	}
 

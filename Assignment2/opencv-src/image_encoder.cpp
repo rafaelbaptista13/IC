@@ -242,8 +242,9 @@ int main(int argc,const char** argv) {
 
     if(argc < 3) {
 		cerr << "Usage: ./image_encoder [ -p predictor (def 0) ]\n";
+        cerr << "                       [ -w window size (def 50) ]\n";
 		cerr << "                      input_file output_file\n";
-		cerr << "Example: ./image_encoder -p 0 -w 10 airplane.ppm coded.bin\n";
+		cerr << "Example: ./image_encoder -p 0 -w 10 airplane.ppm compressed.bin\n";
 		return 1;
 	}
 

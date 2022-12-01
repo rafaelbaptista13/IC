@@ -305,14 +305,16 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
 
 int main(int argc,const char** argv) {
 
-    int predictor_type = 0;
+    int predictor_type = 4;
     int quantize_bits = 0;
     int window_size = 50;
 
     if(argc < 3) {
-		cerr << "Usage: ./audio_codec [ -p predictor (def 0) ]\n";
-		cerr << "                      input_file output_file\n";
-		cerr << "Example: ./audio_codec -p 0 -w 10 sample.wav compressed.wav\n";
+		cerr << "Usage: ./audio_encoder [ -p predictor (def 4) ]\n";
+		cerr << "                       [ -w window size (def 50) ]\n";
+        cerr << "                       [ -q num_bits ]\n";
+        cerr << "                      input_file output_file\n";
+		cerr << "Example: ./audio_encoder -p 0 -w 10 sample.wav compressed.bin\n";
 		return 1;
 	}
 
@@ -363,7 +365,7 @@ int main(int argc,const char** argv) {
             try {
                 quantize_bits = atoi(argv[n+1]);
 
-                if(quantize_bits < 1) {
+                if(quantize_bits < 1 || quantize_bits > 15) {
                     cerr << "Error: invalid q parameter requested\n";
                     return 1;
                 }
