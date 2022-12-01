@@ -10,6 +10,10 @@ using namespace std;
 constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
 
 
+/*
+    Function used to encode a residual value using the Golomb Code
+*/
+
 string encodeResidual(GolombCode golombCode, WAVQuant* wavQuant, int residual) {
     if (wavQuant != nullptr) {
         return golombCode.encode(wavQuant->quantizeAndEncode(residual));
@@ -18,40 +22,64 @@ string encodeResidual(GolombCode golombCode, WAVQuant* wavQuant, int residual) {
         return golombCode.encode(residual);
 }
 
+
+/*
+    Function used to optimize the Golomb Parameter m
+*/
+
 int optimizeGolombParameter(long int sumSamples, int numSamples) {
     double mean = (double) sumSamples/ (double) numSamples;
     double alfa = mean / (mean + 1);
     return ceil( -1/log2(alfa) ) ;
 }
 
+
+/*
+    Function used to encode a Mono audio
+*/
+
 void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, WAVQuant* wavQuant, int window_size) {
 
+    // Number of frames read
     size_t nFrames;
+    // Samples read
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
-    long int sumSamples_array[] = {0, 0, 0, 0};
+    // Sum of Residuals values for all predictors
+    long int sumResiduals[] = {0, 0, 0, 0};
+    // Number of samples read
     int numSamples = 0;
-    int golomb_m_parameter_array[] = {100, 100, 100, 100};       // Initial m = 100
+    // Current M parameter for all predictors
+    int golomb_m_parameter[] = {100, 100, 100, 100};       // Initial m = 100
 
+    // Residual value
     int residual = 0;
+    // Predicted Value
     int predicted_value = 0;
-    string encoded_residuals_array[] = {"", "", "", ""};
+    // String to store the encoded residuals of a block for all predictors, in order to compare them later
+    string encoded_residuals[] = {"", "", "", ""};
+    // Write first golomb m parameter of each predictor and initial sum residual in first block
     for (int predictor = 0; predictor < 4; predictor++) {
-        encoded_residuals_array[predictor] += std::bitset<32>(golomb_m_parameter_array[predictor]).to_string();
-        encoded_residuals_array[predictor] += std::bitset<32>(sumSamples_array[predictor]).to_string();
+        encoded_residuals[predictor] += std::bitset<32>(golomb_m_parameter[predictor]).to_string();
+        encoded_residuals[predictor] += std::bitset<32>(sumResiduals[predictor]).to_string();
     }
+    // Array to store the last three values in order to calculate residuals for all predictors
     int lastSamples[] = {0, 0, 0};
+    // Initial Golomb Code
     GolombCode golombCode {100};
+    // Array to store the current Golomb Code of each predictor
     GolombCode currentGolombCodes[] = {golombCode, golombCode, golombCode, golombCode};
-
+    // Map to store the used Golomb Codes
     map<int, GolombCode> golombCodes = {{100, golombCode}};
 
 	while((nFrames = sndFile.readf(samples.data(), FRAMES_BUFFER_SIZE))) {
 		samples.resize(nFrames * sndFile.channels());
         
+        // Iterate samples of this block
         for (auto it = samples.begin(); it != samples.end(); ++it) {
             int index = std::distance(samples.begin(), it);
 
             numSamples += 1;
+            // Calculate Residual
             if (predictor_type == 0) {
                 residual = samples[index];
             } else if (predictor_type == 1) {
@@ -61,25 +89,27 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
             } else if (predictor_type == 3) {
                 residual = samples[index] - (3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2]);
             } else if (predictor_type == 4) {
+                // Calculate residuals for all predictors
                 int residuals[4] = {samples[index],
                                     samples[index] - lastSamples[0],
                                     samples[index] - (2 * lastSamples[0] - lastSamples[1]),
                                     samples[index] - (3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2])};
                 for (int predictor = 0; predictor < 4; predictor++) {
-                    // Encode and append to encodedstring
-                    encoded_residuals_array[predictor] += encodeResidual(currentGolombCodes[predictor], wavQuant, residuals[predictor]);
-                    sumSamples_array[predictor] += abs(residuals[predictor]);
+                    // Encode and append to encoded string
+                    encoded_residuals[predictor] += encodeResidual(currentGolombCodes[predictor], wavQuant, residuals[predictor]);
+                    sumResiduals[predictor] += abs(residuals[predictor]);
                 }
             }
             
+            // If the predictor type is not the one that tries all the predictors and choose the best one
             if (predictor_type != 4) {
-                // Encode and write
+                // Encode residual and write
                 string encoded_residual = encodeResidual(currentGolombCodes[predictor_type], wavQuant, residual);
                 bitStream.write_n_bits(encoded_residual);
                 if (!wavQuant)
-                    sumSamples_array[predictor_type] += abs(residual);
+                    sumResiduals[predictor_type] += abs(residual);
                 else
-                    sumSamples_array[predictor_type] += abs(wavQuant->quantize_value(residual));
+                    sumResiduals[predictor_type] += abs(wavQuant->quantize_value(residual));
             }
 
             if (wavQuant){
@@ -94,7 +124,7 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
                 }
             }
 
-
+            // Update the last three samples
             lastSamples[2] = lastSamples[1];      // index - 3
             lastSamples[1] = lastSamples[0];      // index - 2
             if (!wavQuant)                        // index - 1
@@ -105,36 +135,42 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
             if (numSamples % window_size == 0) {
                 // Update golombCodes
                 for (int predictor = 0; predictor < 4; predictor++) {
-                    golomb_m_parameter_array[predictor] = optimizeGolombParameter(sumSamples_array[predictor], window_size);
-                    if (golombCodes.count(golomb_m_parameter_array[predictor])) {
-                        currentGolombCodes[predictor] = golombCodes.find(golomb_m_parameter_array[predictor])->second;
+                    golomb_m_parameter[predictor] = optimizeGolombParameter(sumResiduals[predictor], window_size);
+                    if (golombCodes.count(golomb_m_parameter[predictor])) {
+                        // Get the golombCode from the map
+                        currentGolombCodes[predictor] = golombCodes.find(golomb_m_parameter[predictor])->second;
                     } else {
                         // Create golombCode
-                        currentGolombCodes[predictor] = GolombCode(golomb_m_parameter_array[predictor]);
-                        golombCodes.insert({golomb_m_parameter_array[predictor], currentGolombCodes[predictor]});
+                        currentGolombCodes[predictor] = GolombCode(golomb_m_parameter[predictor]);
+                        golombCodes.insert({golomb_m_parameter[predictor], currentGolombCodes[predictor]});
                     }
-                    sumSamples_array[predictor] = 0;
+                    // Reset sum of residuals
+                    sumResiduals[predictor] = 0;
                 }
             }
         }
         
-
+        // If the predictor type is the one that tries all the predictors and choose the best one
         if (predictor_type == 4) {
-            unsigned int smallestSize = encoded_residuals_array[0].length();
+            // Choose the best predictor based on the size of the encoded string
+            unsigned int smallestSize = encoded_residuals[0].length();
             int bestPredictor = 0;
             for (int i = 1; i<4; i++) {
-                if ( encoded_residuals_array[i].length() < smallestSize) {
-                    smallestSize = encoded_residuals_array[i].length();
+                if ( encoded_residuals[i].length() < smallestSize) {
+                    smallestSize = encoded_residuals[i].length();
                     bestPredictor = i;
                 }
             }
 
+            // Write the best predictor value
             bitStream.write_n_bits(std::bitset<32>(bestPredictor).to_string().substr(30, 32));
-            bitStream.write_n_bits(encoded_residuals_array[bestPredictor]);
+            // Write the encoded string of the best predictor
+            bitStream.write_n_bits(encoded_residuals[bestPredictor]);
 
+            // Reset the encoded string by starting with the first golomb m parameter and the current sum of residuals
             for (int predictor = 0; predictor < 4; predictor++) {
-                encoded_residuals_array[predictor] = std::bitset<32>(golomb_m_parameter_array[predictor]).to_string();
-                encoded_residuals_array[predictor] += std::bitset<32>(sumSamples_array[predictor]).to_string();
+                encoded_residuals[predictor] = std::bitset<32>(golomb_m_parameter[predictor]).to_string();
+                encoded_residuals[predictor] += std::bitset<32>(sumResiduals[predictor]).to_string();
             }
         }
     }
@@ -142,57 +178,82 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
 
 
 
-
+/*
+    Function used to encode a Stereo audio
+*/
 
 void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitStream, WAVQuant* wavQuant, int window_size) {
     
+    // Number of frames read
     size_t nFrames;
+    // Samples read
 	vector<short> samples(FRAMES_BUFFER_SIZE * sndFile.channels());
-    long int mid_sumSamples_array[] = {0, 0, 0, 0};
-    long int side_sumSamples_array[] = {0, 0, 0, 0};
+    // Sum of Residuals values of MID channel for all predictors
+    long int mid_sumResiduals[] = {0, 0, 0, 0};
+    // Sum of Residuals values of SIDE channel for all predictors
+    long int side_sumResiduals[] = {0, 0, 0, 0};
+    // Number of samples read
     int numSamples = 0;
-    uint mid_golomb_m_parameter_array[] = {100, 100, 100, 100};          // Initial m = 100
-    uint side_golomb_m_parameter_array[] = {100, 100, 100, 100};         // Initial m = 100
+    // Current M parameter of MID channel for all predictors
+    uint mid_golomb_m_parameter[] = {100, 100, 100, 100};          // Initial m = 100
+    // Current M parameter of SIDE channel for all predictors
+    uint side_golomb_m_parameter[] = {100, 100, 100, 100};         // Initial m = 100
 
+    // To store the last sample
     int lastSample = 0;
+    // Mean value
     int meanValue;
-    int predictedMeanValue;
+    int predictedMeanValue=0;
+    // Array to store the last three values of mean in order to calculate the residuals for all predictors
     int lastMeanValues[] = {0,0,0};
-    int predictedDiffValue;
+    // Difference value
     int diffValue;
+    int predictedDiffValue=0;
+    // Array to store the last three values of difference in order to calculate the residuals for all predictors
     int lastDiffValues[] = {0,0,0};
     
+    // Residual value of Mid Channel
     int midChannelResidual = 0;
+    // Residual value of Side Channel
     int sideChannelResidual = 0;
 
+    // String to store the encoded residuals of a block for all predictors, in order to compare them later
     string encoded_residuals_array[] = {"", "", "", ""};
+    // Write first golomb m parameter of each predictor and initial sum residual in first block for mid and side channels
     for (int predictor=0; predictor<4; predictor++) {
-        encoded_residuals_array[predictor] = std::bitset<32>(side_golomb_m_parameter_array[predictor]).to_string();
-        encoded_residuals_array[predictor] += std::bitset<32>(side_sumSamples_array[predictor]).to_string();
-        encoded_residuals_array[predictor] += std::bitset<32>(mid_golomb_m_parameter_array[predictor]).to_string();
-        encoded_residuals_array[predictor] += std::bitset<32>(mid_sumSamples_array[predictor]).to_string();
+        encoded_residuals_array[predictor] = std::bitset<32>(side_golomb_m_parameter[predictor]).to_string();
+        encoded_residuals_array[predictor] += std::bitset<32>(side_sumResiduals[predictor]).to_string();
+        encoded_residuals_array[predictor] += std::bitset<32>(mid_golomb_m_parameter[predictor]).to_string();
+        encoded_residuals_array[predictor] += std::bitset<32>(mid_sumResiduals[predictor]).to_string();
     }
 
+    // Initial Golomb Code
     GolombCode golombCode {100};
+    // Array to store the current Golomb Code of each predictor of Side Channel
     GolombCode currentSideGolombCodes[] = {golombCode, golombCode, golombCode, golombCode};
+    // Array to store the current Golomb Code of each predictor of Mid Channel
     GolombCode currentMidGolombCodes[] = {golombCode, golombCode, golombCode, golombCode};
-
+    // Map to store the used Golomb Codes
     map<int, GolombCode> golombCodes = {{100, golombCode}};
 
     while((nFrames = sndFile.readf(samples.data(), FRAMES_BUFFER_SIZE))) {
         samples.resize(nFrames * sndFile.channels());
 
+        // Iterate samples of this block
         for (auto it = samples.begin(); it != samples.end(); ++it) {
             int index = std::distance(samples.begin(), it);
             
             if (index % 2 == 0) {
+                // Needed to save the sample in order to calculate the mean and difference between two samples
                 lastSample = samples[index];
             } else {
                 
+                // Calculate Mean and Difference values
                 meanValue = (lastSample + samples[index]) / 2;
                 diffValue = (lastSample - samples[index]);
                 numSamples += 1;
 
+                // Calculate Residual for both channels
                 if (predictor_type == 0) {
                     midChannelResidual = meanValue;
                     sideChannelResidual = diffValue;
@@ -206,7 +267,7 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
                     midChannelResidual = meanValue - (3 * lastMeanValues[0] - 3 * lastMeanValues[1] + lastMeanValues[2]);
                     sideChannelResidual = diffValue - (3 * lastDiffValues[0] - 3 * lastDiffValues[1] + lastDiffValues[2]);
                 } else if (predictor_type == 4) {
-                    
+                    // Calculate residuals for all predictors
                     int midChannelResiduals[4] = {meanValue, 
                                                 meanValue - lastMeanValues[0], 
                                                 meanValue -  (2 * lastMeanValues[0] - lastMeanValues[1]),
@@ -217,33 +278,33 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
                                                 diffValue - (3 * lastDiffValues[0] - (3 * lastDiffValues[1]) + lastDiffValues[2])};
                     
                     for (int predictor=0; predictor<4; predictor++) {
-                        // Encode and append to encodedstring
+                        // Encode and append to encoded string
                         encoded_residuals_array[predictor] += encodeResidual(currentMidGolombCodes[predictor], wavQuant, midChannelResiduals[predictor]);
-                        mid_sumSamples_array[predictor] += abs(midChannelResiduals[predictor]);
+                        mid_sumResiduals[predictor] += abs(midChannelResiduals[predictor]);
 
-                        // Encode and append to encodedstring
+                        // Encode and append to encoded string
                         encoded_residuals_array[predictor] += encodeResidual(currentSideGolombCodes[predictor], wavQuant, sideChannelResiduals[predictor]);
-                        side_sumSamples_array[predictor] += abs(sideChannelResiduals[predictor]);
+                        side_sumResiduals[predictor] += abs(sideChannelResiduals[predictor]);
                     }
 
                 }
 
+                // If the predictor type is not the one that tries all the predictors and choose the best one
                 if (predictor_type != 4) {
                     // Encode and write
                     string mid_encoded_residual = encodeResidual(currentMidGolombCodes[predictor_type], wavQuant, midChannelResidual);
                     bitStream.write_n_bits(mid_encoded_residual);
                     if(!wavQuant)
-                        mid_sumSamples_array[predictor_type] += abs(midChannelResidual);
+                        mid_sumResiduals[predictor_type] += abs(midChannelResidual);
                     else
-                        mid_sumSamples_array[predictor_type] += abs(wavQuant->quantize_value(midChannelResidual));
-
+                        mid_sumResiduals[predictor_type] += abs(wavQuant->quantize_value(midChannelResidual));
                     // Encode and write
                     string side_encoded_residual = encodeResidual(currentSideGolombCodes[predictor_type], wavQuant, sideChannelResidual);
                     bitStream.write_n_bits(side_encoded_residual);
                     if(!wavQuant)
-                        side_sumSamples_array[predictor_type] += abs(sideChannelResidual);
+                        side_sumResiduals[predictor_type] += abs(sideChannelResidual);
                     else
-                        side_sumSamples_array[predictor_type] += abs(wavQuant->quantize_value(sideChannelResidual));
+                        side_sumResiduals[predictor_type] += abs(wavQuant->quantize_value(sideChannelResidual));
                 }
 
                 if (wavQuant){
@@ -266,6 +327,7 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
                     }
                 }
 
+                // Update the last three mean values and difference values
                 lastMeanValues[2] = lastMeanValues[1];
                 lastMeanValues[1] = lastMeanValues[0];
                 if(!wavQuant)
@@ -283,26 +345,31 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
                 if (numSamples % window_size == 0) {
                     // Update golombCodes
                     for (int predictor = 0; predictor < 4; predictor++) {
-                        side_golomb_m_parameter_array[predictor] = optimizeGolombParameter(side_sumSamples_array[predictor], window_size);
-                        mid_golomb_m_parameter_array[predictor] = optimizeGolombParameter(mid_sumSamples_array[predictor], window_size);
-                        if (golombCodes.count(side_golomb_m_parameter_array[predictor])) {
-                            currentSideGolombCodes[predictor] = golombCodes.find(side_golomb_m_parameter_array[predictor])->second;
+                        // Side Channel
+                        side_golomb_m_parameter[predictor] = optimizeGolombParameter(side_sumResiduals[predictor], window_size);
+                        if (golombCodes.count(side_golomb_m_parameter[predictor])) {
+                            // Get the golombCode from the map
+                            currentSideGolombCodes[predictor] = golombCodes.find(side_golomb_m_parameter[predictor])->second;
                         } else {
                             // Create golombCode
-                            currentSideGolombCodes[predictor] = GolombCode(side_golomb_m_parameter_array[predictor]);
-                            golombCodes.insert({side_golomb_m_parameter_array[predictor], currentSideGolombCodes[predictor]});
+                            currentSideGolombCodes[predictor] = GolombCode(side_golomb_m_parameter[predictor]);
+                            golombCodes.insert({side_golomb_m_parameter[predictor], currentSideGolombCodes[predictor]});
                         }
 
-                        if (golombCodes.count(mid_golomb_m_parameter_array[predictor])) {
-                            currentMidGolombCodes[predictor] = golombCodes.find(mid_golomb_m_parameter_array[predictor])->second;
+                        // Mid Channel
+                        mid_golomb_m_parameter[predictor] = optimizeGolombParameter(mid_sumResiduals[predictor], window_size);
+                        if (golombCodes.count(mid_golomb_m_parameter[predictor])) {
+                            // Get the golombCode from the map
+                            currentMidGolombCodes[predictor] = golombCodes.find(mid_golomb_m_parameter[predictor])->second;
                         } else {
                             // Create golombCode
-                            currentMidGolombCodes[predictor] = GolombCode(mid_golomb_m_parameter_array[predictor]);
-                            golombCodes.insert({mid_golomb_m_parameter_array[predictor], currentMidGolombCodes[predictor]});
+                            currentMidGolombCodes[predictor] = GolombCode(mid_golomb_m_parameter[predictor]);
+                            golombCodes.insert({mid_golomb_m_parameter[predictor], currentMidGolombCodes[predictor]});
                         }
 
-                        side_sumSamples_array[predictor] = 0;
-                        mid_sumSamples_array[predictor] = 0;
+                        // Reset sum of residuals
+                        side_sumResiduals[predictor] = 0;
+                        mid_sumResiduals[predictor] = 0;
                     }
                 }
             }
@@ -311,26 +378,29 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
         }
 
 
+        // If the predictor type is the one that tries all the predictors and choose the best one
         if (predictor_type == 4) {
-
+            // Choose the best predictor based on the size of the encoded string
             unsigned int smallestSize = encoded_residuals_array[0].length();
             int bestPredictor = 0;
             for (int i = 1; i<4; i++) {
-
                 if ( encoded_residuals_array[i].length() < smallestSize) {
                     smallestSize = encoded_residuals_array[i].length();
                     bestPredictor = i;
                 }
             }
 
+            // Write the best predictor value
             bitStream.write_n_bits(std::bitset<32>(bestPredictor).to_string().substr(30, 32));
+            // Write the encoded string of the best predictor
             bitStream.write_n_bits(encoded_residuals_array[bestPredictor]);
 
+            // Reset the encoded string by starting with the first golomb m parameter and the current sum of residuals for both channels
             for (int predictor=0; predictor<4; predictor++) {
-                encoded_residuals_array[predictor] = std::bitset<32>(side_golomb_m_parameter_array[predictor]).to_string();
-                encoded_residuals_array[predictor] += std::bitset<32>(side_sumSamples_array[predictor]).to_string();
-                encoded_residuals_array[predictor] += std::bitset<32>(mid_golomb_m_parameter_array[predictor]).to_string();
-                encoded_residuals_array[predictor] += std::bitset<32>(mid_sumSamples_array[predictor]).to_string();
+                encoded_residuals_array[predictor] = std::bitset<32>(side_golomb_m_parameter[predictor]).to_string();
+                encoded_residuals_array[predictor] += std::bitset<32>(side_sumResiduals[predictor]).to_string();
+                encoded_residuals_array[predictor] += std::bitset<32>(mid_golomb_m_parameter[predictor]).to_string();
+                encoded_residuals_array[predictor] += std::bitset<32>(mid_sumResiduals[predictor]).to_string();
             }
         }
     }
@@ -340,6 +410,7 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
 
 int main(int argc,const char** argv) {
 
+    // Default values
     int predictor_type = 4;
     int quantize_bits = 0;
     int window_size = 50;
@@ -353,17 +424,20 @@ int main(int argc,const char** argv) {
 		return 1;
 	}
 
+    // Open input file
 	SndfileHandle sndFile { argv[argc-2] };
 	if(sndFile.error()) {
 		cerr << "Error: invalid input file\n";
 		return 1;
     }
 
+    // Check if it is Wav format
 	if((sndFile.format() & SF_FORMAT_TYPEMASK) != SF_FORMAT_WAV) {
 		cerr << "Error: file is not in WAV format\n";
 		return 1;
 	}
 
+    // Check if it it PCM 16
 	if((sndFile.format() & SF_FORMAT_SUBMASK) != SF_FORMAT_PCM_16) {
 		cerr << "Error: file is not in PCM_16 format\n";
 		return 1;
