@@ -40,7 +40,7 @@ class WAVQuant {
         if (version == 1) {
             /* Version of not keeping the 0   (-6 -2 2 6) */
             int counter = 0;
-            int codeCounter = 0;
+            int codeCounter = 1;
             int currentThreshold = -32768 + interval / 2;
             for (int i = -32768; i<= 32767; i++) {
                 // If the current value is in the middle of two multiples(of the interval value)
@@ -76,7 +76,7 @@ class WAVQuant {
         return samples;
 	}
 
-    inline short quantize_value(const short sample){
+    inline int quantize_value(const short sample){
         return approximationMap[sample];
     }
 

@@ -49,9 +49,9 @@ vector<short> decodeMonoAudio(vector<short> samples, int predictor_type, int num
             } else if (selectedPredictor == 1) {
                 samples[numSamples] = lastSamples[0] + residual;
             } else if (selectedPredictor == 2) {
-                samples[numSamples] = residual + (2*lastSamples[0]) + lastSamples[1];
-            } else {  
-                samples[numSamples] = residual + 3 * lastSamples[0] + 3 * lastSamples[1] - lastSamples[2];
+                samples[numSamples] = residual + (2*lastSamples[0]) - lastSamples[1];
+            } else {
+                samples[numSamples] = residual + 3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2];
             }
             lastSamples[2] = lastSamples[1];
             lastSamples[1] = lastSamples[0];

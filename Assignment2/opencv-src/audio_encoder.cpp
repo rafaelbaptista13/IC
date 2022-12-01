@@ -11,8 +11,9 @@ constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading frames
 
 
 string encodeResidual(GolombCode golombCode, WAVQuant* wavQuant, int residual) {
-    if (wavQuant != nullptr)
-        return golombCode.encode(wavQuant->quantize(residual));
+    if (wavQuant != nullptr) {
+        return golombCode.encode(wavQuant->quantizeAndEncode(residual));
+    }
     else
         return golombCode.encode(residual);
 }
@@ -52,14 +53,14 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
             } else if (predictor_type == 1) {
                 residual = samples[index] - lastSamples[0];
             } else if (predictor_type == 2) {
-                residual = samples[index] - 2 * lastSamples[0] - lastSamples[1];
+                residual = samples[index] - (2 * lastSamples[0] - lastSamples[1]);
             } else if (predictor_type == 3) {
-                residual = samples[index] - 3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2];
+                residual = samples[index] - (3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2]);
             } else if (predictor_type == 4) {
                 int residuals[4] = {samples[index],
                                     samples[index] - lastSamples[0],
-                                    samples[index] - 2 * lastSamples[0] - lastSamples[1],
-                                    samples[index] - 3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2]};
+                                    samples[index] - (2 * lastSamples[0] - lastSamples[1]),
+                                    samples[index] - (3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2])};
 
                 for (int predictor = 0; predictor < 4; predictor++) {
                     // Encode and append to encodedstring
@@ -84,9 +85,9 @@ void encodeMonoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bitSt
                 } else if (predictor_type == 1) {
                     predicted_value = lastSamples[0] + wavQuant->quantize_value(residual);
                 } else if (predictor_type == 2) {
-                    predicted_value = wavQuant->quantize_value(residual) + (2*lastSamples[0]) + lastSamples[1];
+                    predicted_value = wavQuant->quantize_value(residual) + (2*lastSamples[0]) - lastSamples[1];
                 } else if (predictor_type == 3){
-                    predicted_value = wavQuant->quantize_value(residual) + 3 * lastSamples[0] + 3 * lastSamples[1] - lastSamples[2];
+                    predicted_value = wavQuant->quantize_value(residual) + 3 * lastSamples[0] - 3 * lastSamples[1] + lastSamples[2];
                 }
             }
 
