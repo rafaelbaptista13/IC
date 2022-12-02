@@ -231,10 +231,6 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
                 side_val = side_residual + (3 * lastDiffValues[0]) - (3 * lastDiffValues[1]) + lastDiffValues[2];
             }
 
-            if (side_val % 2 == 1) {
-                mid_val += 0.5;
-            }
-
             // Update the last three mean and diff values
             lastMeanValues[2] = lastMeanValues[1];
             lastMeanValues[1] = lastMeanValues[0];
@@ -242,6 +238,10 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
             lastDiffValues[2] = lastDiffValues[1];
             lastDiffValues[1] = lastDiffValues[0];
             lastDiffValues[0] = side_val;
+
+            if (side_val % 2 == 1) {
+                mid_val += 0.5;
+            }
 
             // Convert to original
             samples[elementsRead] = (2*mid_val - side_val)/2;
