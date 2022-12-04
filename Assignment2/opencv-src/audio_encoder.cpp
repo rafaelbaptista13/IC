@@ -238,7 +238,7 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
 
     while((nFrames = sndFile.readf(samples.data(), FRAMES_BUFFER_SIZE))) {
         samples.resize(nFrames * sndFile.channels());
-
+        
         // Iterate samples of this block
         for (auto it = samples.begin(); it != samples.end(); ++it) {
             int index = std::distance(samples.begin(), it);
@@ -403,6 +403,7 @@ void encodeStereoAudio(SndfileHandle sndFile, int predictor_type, BitStream &bit
                 encoded_residuals_array[predictor] += std::bitset<32>(mid_sumResiduals[predictor]).to_string();
             }
         }
+   
     }
 
 }
@@ -513,7 +514,6 @@ int main(int argc,const char** argv) {
     bitStream.write_n_bits(std::bitset<32>(window_size).to_string());
     // Write quantize_bits to coded file
     bitStream.write_n_bits(std::bitset<32>(quantize_bits).to_string());
-    
 
     if (sndFile.channels() == 1) encodeMonoAudio(sndFile, predictor_type, bitStream, wavQuant, window_size);
     else if (sndFile.channels() == 2) encodeStereoAudio(sndFile, predictor_type, bitStream, wavQuant, window_size);

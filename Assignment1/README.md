@@ -1,5 +1,5 @@
 # IC
-Information and Codification Course
+Information and Codification Course - Assignment 2 
 
 # How to compile
 ```

@@ -139,7 +139,7 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
     // Current Predictor
     int selectedPredictor;
     // Mid value
-    int mid_val;
+    double mid_val;
     // Residual of Mid channel
     int mid_residual;
     // Side value
@@ -238,14 +238,18 @@ vector<short> decodeStereoAudio(vector<short> samples, int predictor_type, int n
             lastDiffValues[2] = lastDiffValues[1];
             lastDiffValues[1] = lastDiffValues[0];
             lastDiffValues[0] = side_val;
-
-            if (side_val % 2 == 1) {
-                mid_val += 0.5;
+            
+            if (side_val % 2 == 1 || side_val % 2 == -1) {
+                if (mid_val >= 0) {
+                    mid_val += 0.5;
+                } else {
+                    mid_val -= 0.5;
+                }   
             }
 
             // Convert to original
-            samples[elementsRead] = (2*mid_val - side_val)/2;
-            samples[elementsRead+1] = side_val + samples[elementsRead];
+            samples[elementsRead+1] = (2*mid_val - side_val)/2;
+            samples[elementsRead] = side_val + samples[elementsRead+1];
             elementsRead+=2;
 
             // Increment sum of residuals for both channels and num of samples
