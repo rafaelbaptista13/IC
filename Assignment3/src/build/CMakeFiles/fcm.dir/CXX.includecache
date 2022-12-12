@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/rafael/Desktop/IC/IC/Assignment3/src/fcm.cpp
+fcm.h
+/home/rafael/Desktop/IC/IC/Assignment3/src/fcm.h
+
+/home/rafael/Desktop/IC/IC/Assignment3/src/fcm.h
+iostream
+-
+string
+-
+fstream
+-
+map
+-
+set
+-
+numeric
+-
+
