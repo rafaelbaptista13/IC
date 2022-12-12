@@ -1,3 +1,0 @@
-/home/rafael/Desktop/IC/IC/Assignment3/src/build/CMakeFiles/edit_cache.dir
-/home/rafael/Desktop/IC/IC/Assignment3/src/build/CMakeFiles/rebuild_cache.dir
-/home/rafael/Desktop/IC/IC/Assignment3/src/build/CMakeFiles/fcm.dir
