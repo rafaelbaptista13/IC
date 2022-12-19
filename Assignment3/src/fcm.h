@@ -6,20 +6,18 @@
 #include <numeric>
 #include <math.h>
 
-using namespace std;
-
 class FCM {
   private:
     int k;
     double alpha;
-    map<wstring, map<wchar_t, double>> state_probabilities;
-    map<wstring, double> context_probabilities;
+    std::map<std::wstring, std::map<wchar_t, double>> state_probabilities;
+    std::map<std::wstring, double> context_probabilities;
     int number_of_states = 0;
-    map<wstring, map<wchar_t, double>> model;
-    set<wchar_t> alphabet;
+    std::map<std::wstring, std::map<wchar_t, double>> model;
+    std::set<wchar_t> alphabet;
 
   public:
-	FCM(string reference_file_name, int k, double alpha) {
+	FCM(std::string reference_file_name, int k, double alpha) {
     this->k = k;
     this->alpha = alpha;
     this->state_probabilities = {};
@@ -30,17 +28,17 @@ class FCM {
     create_fcm_model(reference_file_name);
 	}
 
-	void create_fcm_model(string reference_file_name) {
+	void create_fcm_model(std::string reference_file_name) {
 
-    locale::global(locale(""));
-    wifstream file(reference_file_name);
+    std::locale::global(std::locale(""));
+    std::wifstream file(reference_file_name);
     if (!file.is_open()){
-      cerr << "Invalid input file: '" << reference_file_name << "'" << endl;
+      std::cerr << "Invalid input file: '" << reference_file_name << "'" << std::endl;
       return;
     }
 
     wchar_t ch;       // Char
-    wstring ctx;      // Context
+    std::wstring ctx;      // Context
 
     // Read first context
     for (int i = 0; i < this->k; i++) {
@@ -78,8 +76,8 @@ class FCM {
     double final_entropy = 0;
     // Iterate all contexts
     for (auto state_pair: this->model) {
-      wstring state = state_pair.first;
-      map<wchar_t, double> state_info = this->model.at(state);
+      std::wstring state = state_pair.first;
+      std::map<wchar_t, double> state_info = this->model.at(state);
 
       // Sum all the occurences
       int state_sum = std::accumulate(state_info.begin(), state_info.end(), 0,
@@ -121,7 +119,7 @@ class FCM {
       final_entropy += prob_context * (state_entropy);
       
     }
-    cout << "Final Entropy: " << final_entropy << endl;
+    std::cout << "Final Entropy: " << final_entropy << std::endl;
   }
 
 };
