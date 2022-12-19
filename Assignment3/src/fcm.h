@@ -7,16 +7,15 @@
 #include <math.h>
 
 class FCM {
-  private:
+  public:
     int k;
     double alpha;
     std::map<std::wstring, std::map<wchar_t, double>> state_probabilities;
     std::map<std::wstring, double> context_probabilities;
     int number_of_states = 0;
     std::map<std::wstring, std::map<wchar_t, double>> model;
-    std::set<wchar_t> alphabet;
+    std::set<wchar_t> alphabet;  
 
-  public:
 	FCM(std::string reference_file_name, int k, double alpha) {
     this->k = k;
     this->alpha = alpha;
@@ -37,8 +36,8 @@ class FCM {
       return;
     }
 
-    wchar_t ch;       // Char
-    std::wstring ctx;      // Context
+    wchar_t ch;             // Char
+    std::wstring ctx;       // Context
 
     // Read first context
     for (int i = 0; i < this->k; i++) {
