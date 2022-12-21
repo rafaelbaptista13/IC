@@ -61,7 +61,7 @@ class FCM {
       } else {
         this->model.insert({ctx, {{ch, 1}}});
       }
-
+      
       ctx.erase(0,1);
       ctx += ch;
     } while (file.get(ch));
@@ -92,7 +92,7 @@ class FCM {
 
       if (number_of_not_shown_chars != 0) {   // If there is at least one char that did not appear
         // Probability calculation with alpha parameter 
-        double prob_chars = this->alpha / (state_sum + this->alpha * alphabet_size );
+        double prob_chars = (double) this->alpha / (state_sum + this->alpha * alphabet_size );
         
         // Entropy multiplied by the number of chars that didn't appear
         state_entropy += number_of_not_shown_chars * (prob_chars * log2(prob_chars));
@@ -105,7 +105,7 @@ class FCM {
       for (auto ch_occur_pair: state_info) {
         wchar_t ch = ch_occur_pair.first;
         // Probability calculation with alpha parameter 
-        double prob_char = (state_info[ch] + this->alpha) / (state_sum + this->alpha * alphabet_size );
+        double prob_char = (double) (state_info[ch] + this->alpha) / (state_sum + this->alpha * alphabet_size );
         this->state_probabilities[state][ch] = prob_char;         // Save the probability
         state_entropy += prob_char * log2(prob_char);
       }
