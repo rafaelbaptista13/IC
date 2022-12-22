@@ -3,10 +3,13 @@
 
 using namespace std;
 
+/*
+    Function to truncate the sections, for example: [(3,8), (5,10), (12,17), (16,21), (20,25)] -> [(3,10), (12,25)] 
+*/
 map<tuple<int,int>,vector<string>> truncate_and_merge_sections(map<tuple<int,int>,vector<string>> sections_dict, vector<tuple<int,int>> sections, string language) {
 
-    vector<tuple<int,int>> sections_to_remove;
-
+    // Get sections from this language that are already in dictionary and remove them from the dictionary
+    vector<tuple<int,int>> sections_to_remove;  // List to save sections that need to be removed from the dictionary because they will have an empty list of languages
     for (auto sections_dict_pair: sections_dict) {
         tuple<int,int> section = sections_dict_pair.first;
         if ( find(sections_dict[section].begin(), sections_dict[section].end(), language) != sections_dict[section].end() ) {
@@ -29,26 +32,26 @@ map<tuple<int,int>,vector<string>> truncate_and_merge_sections(map<tuple<int,int
 
     vector<tuple<int,int>> merged_sections;
     if (sections.size() > 1) {
-        tuple<int,int> initial_section = sections[0];
-        tuple<int,int> merged_section = make_tuple(get<0>(initial_section), 0);
+        tuple<int,int> initial_section = sections[0];       // Get the first section
+        tuple<int,int> merged_section = make_tuple(get<0>(initial_section), 0);     // Merged section initialized only with the starting value
         tuple<int,int> current_section;
-        for (int i = 1; i < (int) sections.size(); i++) {
-            tuple<int,int> previous_section = sections[i-1];
-            current_section = sections[i];
+        for (int i = 1; i < (int) sections.size(); i++) {   // For the next sections
+            tuple<int,int> previous_section = sections[i-1];    // Get the previous section
+            current_section = sections[i];                      // Get the section
 
-            if (get<1>(previous_section) < get<0>(current_section) - 1) {
-                merged_section = make_tuple(get<0>(merged_section), get<1>(previous_section));
+            if (get<1>(previous_section) < get<0>(current_section) - 1) {   // For example: (3, 9) (11, 17) = If 9 < 11 - 1 it means that this section has ended and is not continuos anymore
+                merged_section = make_tuple(get<0>(merged_section), get<1>(previous_section)); // Create final merged section (starting, end). For example (3, 9)
                 merged_sections.push_back(merged_section);
-                merged_section = make_tuple(get<0>(current_section), 0);
+                merged_section = make_tuple(get<0>(current_section), 0);    // Assign the current section starting position to final_section
             }
         }
-        merged_section = make_tuple(get<0>(merged_section), get<1>(current_section));
+        merged_section = make_tuple(get<0>(merged_section), get<1>(current_section));   // Final merged section is assigned with the end-value of the last section end-value
         merged_sections.push_back(merged_section);
-    } else if (sections.size() == 1) {
+    } else if (sections.size() == 1) {      // If sections only have one section, we just add it to merged_sections
         merged_sections.push_back(sections[0]);
     }
 
-    for (tuple<int,int> section: merged_sections) {
+    for (tuple<int,int> section: merged_sections) {     // Save the sections and language to main dictionary
         if (sections_dict.count(section)) {
             sections_dict[section].push_back(language);
         } else {
@@ -126,8 +129,9 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
     target_alphabet.erase(prev(target_alphabet.end()));
     file.close();
 
-    // Sliding window implementation
     /*
+     Sliding window implementation
+    */
     map<tuple<int,int>, vector<string>> sections_dict;
     for (auto pair: reference_file_dict) {
         string language = pair.first;
@@ -148,7 +152,7 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
     }
 
     // get sections that were not well compressed by any language
-    vector<int> remainder_positions;
+    vector<int> remainder_positions;    // List that will contain all positions of target text that were not comprresed by any language
     for (int i = 0; i < target_file_length; i++) {
         bool valid = true;
         for (auto sections_dict_pair: sections_dict) {
@@ -166,7 +170,7 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
     int initial_pos = 0;
     for (int i = 0; i < ((int) remainder_positions.size() - 1); i++) {
         if (remainder_positions[i] + 1 != remainder_positions[i+1]) {
-            if (remainder_positions[i] - initial_pos > k) {
+            if (remainder_positions[i] - initial_pos > k) {     // Check if the length of the section is greater than k
                 remainder_sections.push_back(make_tuple(initial_pos, remainder_positions[i]));
             }
             initial_pos = remainder_positions[i + 1];
@@ -174,7 +178,7 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
     }
 
     // repeat the process for the final section
-    if (remainder_positions.back() - initial_pos > k) {
+    if (remainder_positions.back() - initial_pos > k) {     // Check if the length of the section is greater than k      
         remainder_sections.push_back( make_tuple(initial_pos, remainder_positions.back()) );
     }
 
@@ -193,7 +197,7 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
 
         sections = get<1>(return_val);
 
-        // Save the sections to main dictionary
+        // Truncate the sections and save them to the main dictionary
         sections_dict = truncate_and_merge_sections(sections_dict, sections, language);
     }
 
@@ -203,6 +207,8 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
             cout << language << ", ";
         cout << endl;
     }
+    /*
+        End of Sliding window implementation
     */
 
 
@@ -210,6 +216,7 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
     /* 
         Words sections implementation. Detailed explanation was written in report document
     */
+    /*
     map<string, vector<tuple<int,int>>> words_dict;
     for (auto language_pair: reference_file_dict) {
         string language = language_pair.first;
@@ -220,7 +227,6 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
         // Calculate entropy
         fcm_model.calculate_probabilities();
 
-        // Get the sections of target text that are well compressed using the language
         vector<tuple<int,int>> words;
         tuple<double, vector<tuple<int,int>>> return_val = get_number_of_bits_required_to_compress_v1(fcm_model, target_file_name, target_alphabet, true);
         words = get<1>(return_val);
@@ -233,21 +239,22 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
         string language = pair.first;
         vector<tuple<int,int>> sections = words_dict[language];
         if (sections.size() > 1) {
-            tuple<int,int> initial_section = sections[0];
-            tuple<int,int> merged_section = make_tuple(get<0>(initial_section), 0);
+            tuple<int,int> initial_section = sections[0];       // Get the first section
+            tuple<int,int> merged_section = make_tuple(get<0>(initial_section), 0);     // Merged section initialized only with the starting value
             vector<tuple<int, int>> merged_sections;
             tuple<int, int> current_section;
-            for (int i = 1; i < (int) sections.size(); i++) {
-                tuple<int, int> previous_section = sections[i-1];
-                current_section = sections[i];
+            for (int i = 1; i < (int) sections.size(); i++) {   // For the next sections
+                tuple<int, int> previous_section = sections[i-1];   // Get the previous section
+                current_section = sections[i];                      // Get the section
                 
+                // For example: (3, 9) (11, 17) = If 9 < 11 - 1 it means that this section has ended and is not continuos anymore 
                 if (get<1>(previous_section) < (get<0>(current_section) - 1) ) {
-                    merged_section = make_tuple(get<0>(merged_section), get<1>(previous_section));
+                    merged_section = make_tuple(get<0>(merged_section), get<1>(previous_section));  // Create final merged section (starting, end). For example (3, 9)
                     merged_sections.push_back(merged_section);
-                    merged_section = make_tuple(get<0>(current_section), 0);
+                    merged_section = make_tuple(get<0>(current_section), 0);    // Assign the current section starting position to final_section
                 }
             }
-            merged_section = make_tuple(get<0>(merged_section), get<1>(current_section));
+            merged_section = make_tuple(get<0>(merged_section), get<1>(current_section));   // Final merged section is assigned with the end-value of the last section end-value
             merged_sections.push_back(merged_section);
             words_dict[language] = merged_sections;
         }
@@ -259,6 +266,7 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
             cout << "(" << get<0>(section) << ", " << get<1>(section) << ") ";
         cout << endl;
     }
+    */
     /*
         End of words sections implementation
     */
@@ -274,7 +282,7 @@ int main(int argc,const char** argv) {
     if (argc < 2 ) {
         cerr << "Usage: ./locatelang target_file_name [-k context_length (def 3)]\n";
         cerr << "                                     [-a alpha_value (def 0.5)]\n";
-        cerr << "Example: ./locatelang ../examples/lusiadas.txt -k 3 -a 0.4\n";
+        cerr << "Example: ./locatelang ../examples/multilang1-PT-ENG-PT.txt -k 3 -a 0.4\n";
         return 1;
     }
 
@@ -293,20 +301,18 @@ int main(int argc,const char** argv) {
                 cerr << "Error: invalid k parameter requested. Must be an integer greater than 0.\n";
                 return 1;
             }
-            break;
         } else if(string(argv[n]) == "-a") {
             try {
                 alpha = atof(argv[n+1]);
 
-                if (alpha <= 0) {
-                    cerr << "Error: invalid alpha parameter requested. Must be greater than 0.\n";
+                if (alpha <= 0 || alpha > 1) {
+                    cerr << "Error: invalid alpha parameter requested. Must be in [0, 1[.\n";
                     return 1;
                 }
             } catch (invalid_argument const&) {	
-                cerr << "Error: invalid alpha parameter requested. Must be greater than 0.\n";
+                cerr << "Error: invalid alpha parameter requested. Must be in [0, 1[.\n";
                 return 1;
             }
-            break;
         }
     }
 

@@ -12,10 +12,10 @@ int main(int argc,const char** argv) {
     bool multipleModelsFlag {false};
     
     if (argc < 3 ) {
-        cerr << "Usage: ./lang input_text_file target_file_name [-k context_length (def 3)]\n";
+        cerr << "Usage: ./lang reference_file_name target_file_name [-k context_length (def 3)]\n";
         cerr << "                                                   [-a alpha_value (def 0.5)]\n";
         cerr << "                                                   [--multiplemodels]\n";
-        cerr << "Example: ./lang ../examples/lusiadas.txt -k 3 -a 0.4\n";
+        cerr << "Example: ./lang ../examples/POR/portuguese-big.utf8 ../examples/POR/portuguese-small.utf8 -k 3 -a 0.4\n";
         return 1;
     }
 
@@ -39,12 +39,12 @@ int main(int argc,const char** argv) {
             try {
                 alpha = atof(argv[n+1]);
 
-                if (alpha <= 0) {
-                    cerr << "Error: invalid alpha parameter requested. Must be greater than 0.\n";
+                if (alpha <= 0 || alpha > 1) {
+                    cerr << "Error: invalid alpha parameter requested. Must be in [0, 1[.\n";
                     return 1;
                 }
             } catch (invalid_argument const&) {	
-                cerr << "Error: invalid alpha parameter requested. Must be greater than 0.\n";
+                cerr << "Error: invalid alpha parameter requested. Must be in [0, 1[.\n";
                 return 1;
             }
         } else if(string(argv[n]) == "--multiplemodels") {
@@ -63,7 +63,7 @@ int main(int argc,const char** argv) {
     double bits;
     vector<tuple<int,int>> foreign_words;
 
-    tuple<double, vector<tuple<int,int>>> return_val = secondMain(input_file_name, target_file_name, k, alpha, false, multipleModelsFlag);
+    tuple<double, vector<tuple<int,int>>> return_val = langCalculation(input_file_name, target_file_name, k, alpha, false, multipleModelsFlag);
     bits = get<0>(return_val);
     foreign_words = get<1>(return_val);
 

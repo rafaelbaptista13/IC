@@ -10,11 +10,11 @@ class FCM {
   public:
     int k;
     double alpha;
-    std::map<std::wstring, std::map<wchar_t, double>> state_probabilities;
-    std::map<std::wstring, double> context_probabilities;
-    int number_of_states = 0;
+    std::map<std::wstring, std::map<wchar_t, double>> state_probabilities;  // Probabilities of each char in each context
+    std::map<std::wstring, double> context_probabilities;                   // Probabilities of each context
+    int number_of_states = 0;                                               // Number of total states (contexts) in text
     std::map<std::wstring, std::map<wchar_t, double>> model;
-    std::set<wchar_t> alphabet;  
+    std::set<wchar_t> alphabet;                                             // Different chars in text
 
 	FCM(std::string reference_file_name, int k, double alpha) {
     this->k = k;
@@ -28,7 +28,7 @@ class FCM {
 	}
 
 	void create_fcm_model(std::string reference_file_name) {
-
+    // Creation of fcm model in iterative way
     std::locale::global(std::locale(""));
     std::wifstream file(reference_file_name);
     if (!file.is_open()){
@@ -48,7 +48,6 @@ class FCM {
     file.get(ch);   // Read first char
 
     do {
-      //wcout << ch;
       alphabet.insert(ch);        // Add char to alphabet
       this->number_of_states++;   // Increment number of states
 

@@ -61,7 +61,7 @@ void findLangCalculation(string target_file_name, int k, double alpha, bool mult
         string language = pair.first;
         double num_bits;
         vector<tuple<int,int>> words;
-        tuple<double, vector<tuple<int,int>>> return_val = secondMain(pair.second, target_file_name, k, alpha, false, multipleModelsFlag);
+        tuple<double, vector<tuple<int,int>>> return_val = langCalculation(pair.second, target_file_name, k, alpha, false, multipleModelsFlag);
         num_bits = get<0>(return_val);
         words = get<1>(return_val);
 
@@ -85,7 +85,7 @@ int main(int argc,const char** argv) {
         cerr << "Usage: ./findlang target_file_name [-k context_length (def 3)]\n";
         cerr << "                                   [-a alpha_value (def 0.5)]\n";
         cerr << "                                   [--multiplemodels]\n";
-        cerr << "Example: ./findlang ../examples/lusiadas.txt -k 3 -a 0.4\n";
+        cerr << "Example: ./findlang ../examples/example.txt -k 3 -a 0.4\n";
         return 1;
     }
 
@@ -104,20 +104,18 @@ int main(int argc,const char** argv) {
                 cerr << "Error: invalid k parameter requested. Must be an integer greater than 0.\n";
                 return 1;
             }
-            break;
         } else if(string(argv[n]) == "-a") {
             try {
                 alpha = atof(argv[n+1]);
 
-                if (alpha <= 0) {
-                    cerr << "Error: invalid alpha parameter requested. Must be greater than 0.\n";
+                if (alpha <= 0 || alpha > 1) {
+                    cerr << "Error: invalid alpha parameter requested. Must be in [0, 1[.\n";
                     return 1;
                 }
             } catch (invalid_argument const&) {	
-                cerr << "Error: invalid alpha parameter requested. Must be greater than 0.\n";
+                cerr << "Error: invalid alpha parameter requested. Must be in [0, 1[.\n";
                 return 1;
             }
-            break;
         } else if(string(argv[n]) == "--multiplemodels") {
             multipleModelsFlag = true;
         }

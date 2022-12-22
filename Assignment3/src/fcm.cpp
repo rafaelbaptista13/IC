@@ -5,12 +5,12 @@ using namespace std;
 int main(int argc,const char** argv) {
 
     int k {3};
-    double a {0.5};
+    double alpha {0.5};
     
     if (argc < 2 ) {
         cerr << "Usage: ./fcm input_text_file [-k context_length (def 3)]\n";
         cerr << "                             [-a alpha_value (def 0.5)]\n";
-        cerr << "Example: ./fcm ../examples/lusiadas.txt -k 3 -a 0.4\n";
+        cerr << "Example: ./fcm ../examples/example.txt -k 3 -a 0.4\n";
         return 1;
     }
 
@@ -20,23 +20,29 @@ int main(int argc,const char** argv) {
         if(string(argv[n]) == "-k") {
             try {
                 k = atoi(argv[n+1]);
+                if (k <= 0) {
+                    cerr << "Error: invalid k parameter requested. Must be an integer greater than 0.\n";
+                    return 1;
+                }
             } catch (invalid_argument const&) {	
                 cerr << "Error: invalid k parameter requested.\n";
                 return 1;
             }
-            break;
         } else if(string(argv[n]) == "-a") {
             try {
-                a = atof(argv[n+1]);
+                alpha = atof(argv[n+1]);
+                if (alpha <= 0 || alpha > 1) {
+                    cerr << "Error: invalid alpha parameter requested. Must be in [0, 1[.\n";
+                    return 1;
+                }
             } catch (invalid_argument const&) {	
-                cerr << "Error: invalid a parameter requested.\n";
+                cerr << "Error: invalid alpha parameter requested.\n";
                 return 1;
             }
-            break;
         }
     }
 
-    FCM fcm {file_name, k, a};
+    FCM fcm {file_name, k, alpha};
     fcm.calculate_probabilities();
 
     return 0;
