@@ -66,7 +66,7 @@ class FCM {
     } while (file.get(ch));
   }
 
-  void calculate_probabilities() {
+  double calculate_probabilities() {
 
     int alphabet_size = this->alphabet.size();
 
@@ -117,7 +117,8 @@ class FCM {
       final_entropy += prob_context * (state_entropy);
       
     }
-    std::cout << "Final Entropy: " << final_entropy << std::endl;
+    
+    return final_entropy;
   }
 
 };

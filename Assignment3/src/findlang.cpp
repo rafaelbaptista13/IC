@@ -6,25 +6,25 @@ using namespace std;
 void findLangCalculation(string target_file_name, int k, double alpha, bool multipleModelsFlag) {
 
     map<string, string> reference_file_dict;
-    reference_file_dict = { {"AFG", "../examples/AFG/afghanistan-medium.utf8"},
+    reference_file_dict = { {"AFG", "../examples/AFG/afghanistan-small.utf8"},
                             {"AFR", "../examples/AFR/afrikaans-small.utf8"},
                             {"ARA", "../examples/ARA/arabic-small.utf8"},
-                            {"BUL", "../examples/BUL/bulgarian-medium.utf8"},
-                            {"CRO", "../examples/CRO/croatian-medium.utf8"},
-                            {"DEN", "../examples/DEN/danish-medium.utf8"},
+                            {"BUL", "../examples/BUL/bulgarian-small.utf8"},
+                            {"CRO", "../examples/CRO/croatian-small.utf8"},
+                            {"DEN", "../examples/DEN/danish-small.utf8"},
                             {"ENG", "../examples/ENG/gb_english.utf8"},
-                            {"SPA", "../examples/ESP/spanish-medium.utf8"},
-                            {"FIN", "../examples/FIN/finnish-medium.utf8"},
-                            {"FRA", "../examples/FRA/french-medium.utf8"},
-                            {"GER", "../examples/GER/german-medium.utf8"},
-                            {"GRE", "../examples/GRE/greek-medium.utf8"},
-                            {"HUN", "../examples/HUN/hungarian-medium.utf8"},
-                            {"ICE", "../examples/ICE/icelandic-medium.utf8"},
-                            {"ITA", "../examples/ITA/italian-medium.utf8"},
-                            {"POL", "../examples/POL/polish-medium.utf8"},
-                            {"POR", "../examples/POR/portuguese-medium.txt"},
-                            {"RUS", "../examples/RUS/russian-medium.utf8"},
-                            {"UKR", "../examples/UKR/ukrainian-medium.utf8"}
+                            {"SPA", "../examples/ESP/spanish-small.txt"},
+                            {"FIN", "../examples/FIN/finnish-small.utf8"},
+                            {"FRA", "../examples/FRA/french-small.utf8"},
+                            {"GER", "../examples/GER/german-small.utf8"},
+                            {"GRE", "../examples/GRE/greek-small.utf8"},
+                            {"HUN", "../examples/HUN/hungarian-small.utf8"},
+                            {"ICE", "../examples/ICE/icelandic-small.utf8"},
+                            {"ITA", "../examples/ITA/italian-small.utf8"},
+                            {"POL", "../examples/POL/polish-small.utf8"},
+                            {"POR", "../examples/POR/portuguese-small.utf8"},
+                            {"RUS", "../examples/RUS/russian-small.utf8"},
+                            {"UKR", "../examples/UKR/ukrainian-small.utf8"}
                             };
 
     
@@ -64,7 +64,7 @@ void findLangCalculation(string target_file_name, int k, double alpha, bool mult
         tuple<double, vector<tuple<int,int>>> return_val = langCalculation(pair.second, target_file_name, k, alpha, false, multipleModelsFlag);
         num_bits = get<0>(return_val);
         words = get<1>(return_val);
-
+        
         if (get<1>(best_choice) == 0.0 || get<1>(best_choice) > num_bits) {
             best_choice = make_tuple(language, num_bits);
         }

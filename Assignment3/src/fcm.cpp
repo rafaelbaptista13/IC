@@ -43,7 +43,7 @@ int main(int argc,const char** argv) {
     }
 
     FCM fcm {file_name, k, alpha};
-    fcm.calculate_probabilities();
-
+    double final_entropy = fcm.calculate_probabilities();
+    std::cout << "Final Entropy: " << final_entropy << std::endl;
     return 0;
 }
