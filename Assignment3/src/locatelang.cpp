@@ -129,22 +129,25 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
     target_alphabet.erase(prev(target_alphabet.end()));
     file.close();
 
+    
+
     /*
      Sliding window implementation
     */
+    map<string, FCM> fcm_models;
     map<tuple<int,int>, vector<string>> sections_dict;
     for (auto pair: reference_file_dict) {
         string language = pair.first;
 
         // Create Finite Context Model from reference text
-        FCM fcm_model = FCM(pair.second, k, alpha);
+        fcm_models.emplace(language, FCM(pair.second, k, alpha));
 
         // Calculate entropy
-        fcm_model.calculate_probabilities();
+        fcm_models.at(language).calculate_probabilities();
 
         // Get the sections of target text that are well compressed using the language
         vector<tuple<int,int>> sections;
-        tuple<double, vector<tuple<int,int>>> return_val = get_number_of_bits_required_to_compress_v2(fcm_model, target_file_name, target_alphabet, k, true);
+        tuple<double, vector<tuple<int,int>>> return_val = get_number_of_bits_required_to_compress_v2(fcm_models.at(language), target_file_name, target_alphabet, k, true);
         sections = get<1>(return_val);
 
         // Save the sections to main dictionary
@@ -184,16 +187,10 @@ void locateLangCalculation(string target_file_name, int k, double alpha) {
 
     for (auto language_pair: reference_file_dict) {
         string language = language_pair.first;
-        
-        // Create Finite Context Model from reference text
-        FCM fcm_model = FCM(language_pair.second, k, alpha);
-
-        // Calculate entropy
-        fcm_model.calculate_probabilities();
 
         // Get the sections of target text that are well compressed using the language
         vector<tuple<int,int>> sections;
-        tuple<double, vector<tuple<int,int>>> return_val = get_sections_from_remaining_sections(fcm_model, target_file_name, target_alphabet, k, remainder_sections);
+        tuple<double, vector<tuple<int,int>>> return_val = get_sections_from_remaining_sections(fcm_models.at(language), target_file_name, target_alphabet, k, remainder_sections);
 
         sections = get<1>(return_val);
 
